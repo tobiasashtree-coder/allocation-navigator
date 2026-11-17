@@ -380,15 +380,132 @@ class BaseAllocationConfig(StrictModel):
     constraints: dict[str, Any]
 
 
+class DebtInput(StrictModel):
+    """Eine Rohreihe für den Schuldenstress-Score (Spezifikation 6.2).
+
+    ``symbol`` ist eine Vorlage mit ``{iso2}`` (Länderkürzel des Tools, zugleich BIS-Kürzel)
+    und ``{iso3}``; ``symbols_by_country`` ersetzt sie für einzelne Länder. Reihen mit
+    höherer Frequenz werden zu Jahreswerten verdichtet (``aggregate``).
+    """
+
+    source: str
+    symbol: str = ""
+    symbols_by_country: dict[str, str] = Field(default_factory=dict)
+    countries: list[str] | None = None
+    panel: bool = False
+    global_series: bool = False
+    frequency: Literal["D", "M", "Q", "A"] = "A"
+    aggregate: Literal["mean", "last", "sum"] = "mean"
+    scale: float = 1.0
+    scale_by_country: dict[str, float] = Field(default_factory=dict)
+    publication_lag: PublicationLag = Field(default_factory=lambda: PublicationLag(months=4))
+    historical: bool = False
+    note: str = ""
+
+    def symbol_for(self, country: str, iso3: str) -> str | None:
+        """Symbol für ein Land oder ``None``, wenn die Reihe dort nicht vorgesehen ist."""
+        if country in self.symbols_by_country:
+            return self.symbols_by_country[country]
+        if self.countries is not None and country not in self.countries:
+            return None
+        if not self.symbol:
+            return None
+        return self.symbol.format(iso2=country, iso3=iso3)
+
+
+class DebtComponent(StrictModel):
+    """Ein Bestandteil des Scores; die Formel steht im Code (features/debt_stress.py)."""
+
+    label: str
+    direction: Literal[1, -1] = 1
+    weight: float = 1.0
+    enabled: bool = True
+
+
+class DebtRules(StrictModel):
+    """Feste Regeln für die Phasen, die nicht allein aus dem Score folgen."""
+
+    high_debt_percentile: float = 0.6
+    deleveraging_pp: float = -10.0
+    monetization_pp: float = 10.0
+
+
+class DebtEpisode(StrictModel):
+    """Historische Episode für die qualitative Plausibilisierung (6.2)."""
+
+    country: str
+    start: int
+    end: int
+    expected: list[str]
+    note: str = ""
+
+
+class DebtCalibration(StrictModel):
+    """Kalibrierung der Phasenschwellen an der Verteilung des Scores (JST-Panel)."""
+
+    quantiles: list[float] = Field(default_factory=lambda: [0.35, 0.60, 0.80])
+    end_year: int = 2020
+
+
+class DebtScoreConfig(StrictModel):
+    """Messbarer Schuldenstress-Score je Land, 0 bis 100 (6.2)."""
+
+    countries: list[str]
+    iso3: dict[str, str]
+    panel: list[str]
+    start: str = "1960-01"
+    panel_start_year: int = 1870
+    min_components: int = 3
+    min_reference: int = 30
+    warn_if_phases_apart: int = 1
+    inputs: dict[str, DebtInput]
+    components: dict[str, DebtComponent]
+    rules: DebtRules = Field(default_factory=DebtRules)
+    calibration: DebtCalibration = Field(default_factory=DebtCalibration)
+    thresholds: list[float] | None = None
+    episodes: list[DebtEpisode] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _check(self) -> DebtScoreConfig:
+        missing = set(self.countries) - set(self.iso3)
+        if missing:
+            raise ValueError(f"debt_cycle.yaml: iso3 fehlt für {sorted(missing)}")
+        if self.thresholds is not None and (
+            len(self.thresholds) != 3 or sorted(self.thresholds) != self.thresholds
+        ):
+            raise ValueError("debt_cycle.yaml: thresholds braucht drei aufsteigende Werte")
+        if len(self.calibration.quantiles) != 3:
+            raise ValueError("debt_cycle.yaml: calibration.quantiles braucht drei Werte")
+        return self
+
+
 class DebtCycleConfig(StrictModel):
-    """Inhalt von ``debt_cycle.yaml``: manuelle Einschätzung und Overlay-Vektoren."""
+    """Inhalt von ``debt_cycle.yaml``: Score, manuelle Einschätzung und Overlay-Vektoren."""
 
     phases: list[str]
     lambda_by_phase: dict[str, float]
     overlay_strength: float = 1.0
+    phase_source: Literal["manual_then_measured", "measured", "manual"] = "manual_then_measured"
     assessments: dict[str, dict[str, Any]]
     overlay_vectors: dict[str, dict[str, Any]]
-    score: dict[str, Any] = Field(default_factory=dict)
+    equity_countries: dict[str, list[str]] = Field(default_factory=dict)
+    score: DebtScoreConfig
+
+    @model_validator(mode="after")
+    def _check(self) -> DebtCycleConfig:
+        if len(self.phases) != 6:
+            raise ValueError("debt_cycle.yaml: sechs Phasen erwartet (6.2)")
+        if set(self.lambda_by_phase) != set(self.phases):
+            raise ValueError("debt_cycle.yaml: lambda_by_phase muss jede Phase nennen")
+        for country, entry in self.assessments.items():
+            phase = entry.get("phase")
+            if phase is not None and phase not in self.phases:
+                raise ValueError(f"debt_cycle.yaml, {country}: unbekannte Phase {phase!r}")
+        for episode in self.score.episodes:
+            bad = set(episode.expected) - set(self.phases)
+            if bad:
+                raise ValueError(f"debt_cycle.yaml, Episode {episode.country}: {sorted(bad)}")
+        return self
 
 
 class BacktestConfig(StrictModel):
@@ -429,6 +546,13 @@ class AppConfig(StrictModel):
             if bad:
                 raise ValueError(f"base.yaml, Korb {basket}: unbekannte Klassen {sorted(bad)}")
         known_sources = set(self.sources.sources)
+        for key, item in self.debt_cycle.score.inputs.items():
+            if source_base(item.source) not in known_sources:
+                raise ValueError(f"debt_cycle.yaml, {key}: unbekannte Quelle {item.source}")
+        for vector in self.debt_cycle.overlay_vectors.values():
+            bad_assets = set(vector) - assets - {"unhedged_usd_cap"}
+            if bad_assets:
+                raise ValueError(f"debt_cycle.yaml: unbekannte Klassen {sorted(bad_assets)}")
         for key, indicator in self.indicators.indicators.items():
             unknown = set(indicator.derived_from) - set(self.indicators.indicators)
             if unknown:
