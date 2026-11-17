@@ -1,14 +1,15 @@
 """Merkmale für Methode B (Spezifikation Abschnitt 5.1).
 
 Zu den Rohindikatoren aus 4.1 (als Point-in-Time-z-Werte, ohne Handgewichtung) kommen vier
-Marktmerkmale, jeweils zum Monatsende t aus Daten bis t:
+Marktmerkmale, jeweils zum Monatsende t aus Daten bis t und **als 6-Monats-Veränderung** wie
+alle Indikatoren aus 4.1 (Entscheidung am Prüfpunkt M3, E-56):
 
-- ``stock_bond_corr_12m``: Korrelation der täglichen S&P-500-Renditen mit den täglichen
-  Anleiherenditen (≈ −Veränderung der 10J.-Rendite) über 252 Handelstage,
-- ``equity_vol_3m``: realisierte Volatilität des S&P 500 über 63 Handelstage (annualisiert),
-- ``real_yield_change_6m``: 6-Monats-Veränderung der Realrendite (10J.-Rendite minus
-  Kerninflation über 12 Monate, beide zum jeweiligen Stichtag bekannt),
-- ``credit_spread_level``: Kreditspread Baa minus 10J. (Tagesreihe, davor Monatsdurchschnitte).
+- ``stock_bond_corr_change_6m``: Veränderung der Korrelation täglicher S&P-500-Renditen mit
+  den täglichen Anleiherenditen (≈ −Veränderung der 10J.-Rendite) über 252 Handelstage,
+- ``equity_vol_change_6m``: Veränderung der realisierten S&P-500-Volatilität über 63 Tage,
+- ``real_yield_change_6m``: Veränderung der Realrendite (10J.-Rendite minus Kerninflation über
+  12 Monate, beide zum jeweiligen Stichtag bekannt),
+- ``credit_spread_change_6m``: Veränderung des Kreditspreads Baa minus 10J.
 
 Alle Merkmale werden wie in 4.1 standardisiert: z-Wert gegen das rollierende 10-Jahres-Fenster
 der damals bekannten Werte, begrenzt auf ±3.
@@ -25,10 +26,10 @@ from navigator.features.credit_cycle import credit_inputs
 from navigator.features.scores import Scores, pit_values
 
 MARKET_FEATURES = (
-    "stock_bond_corr_12m",
-    "equity_vol_3m",
+    "stock_bond_corr_change_6m",
+    "equity_vol_change_6m",
     "real_yield_change_6m",
-    "credit_spread_level",
+    "credit_spread_change_6m",
 )
 
 
@@ -60,13 +61,18 @@ def _at_month_ends(daily: pd.Series, dates: pd.DatetimeIndex, max_gap_days: int 
     return out
 
 
+def _change(series: pd.Series, months: int = 6) -> pd.Series:
+    """6-Monats-Veränderung einer Monatsreihe (nur nach hinten)."""
+    return series - series.shift(months)
+
+
 def market_features(
     store: PitStore,
     dates: pd.DatetimeIndex,
     defaults: IndicatorDefaults,
     credit_rules: CreditCycleRules,
 ) -> pd.DataFrame:
-    """Rohe (nicht standardisierte) Marktmerkmale je Stichtag."""
+    """Marktmerkmale je Stichtag als 6-Monats-Veränderung (noch nicht standardisiert)."""
     equity = _daily(store, "us_equity_price")
     yields = _daily(store, "us_dgs10")
     eq_ret = np.log(equity).diff()
@@ -85,10 +91,10 @@ def market_features(
     spread = credit_inputs(store, dates, credit_rules)["spread"]
     return pd.DataFrame(
         {
-            "stock_bond_corr_12m": _at_month_ends(corr.dropna(), dates),
-            "equity_vol_3m": _at_month_ends(vol.dropna(), dates),
-            "real_yield_change_6m": real - real.shift(6),
-            "credit_spread_level": spread,
+            "stock_bond_corr_change_6m": _change(_at_month_ends(corr.dropna(), dates)),
+            "equity_vol_change_6m": _change(_at_month_ends(vol.dropna(), dates)),
+            "real_yield_change_6m": _change(real),
+            "credit_spread_change_6m": _change(spread),
         },
         index=dates,
     )

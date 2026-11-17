@@ -9,9 +9,9 @@ Ablauf:
   Wahrscheinlichkeiten und der Viterbi-Pfad nutzen künftige Daten und kommen hier nicht vor.
 - Benennung: Die Zustände werden über ihre mittleren Wachstums- und Inflationswerte den
   Quadranten zugeordnet (Ungarische Methode). So bleiben die Namen über Neuschätzungen hinweg
-  gleich. Passt ein Zustand zu keinem Quadranten und zeigt er hohen Stress (Volatilität,
-  Kreditspread), heißt er „Finanzstress"; seine Wahrscheinlichkeit zählt im Vergleich mit
-  Methode A zum zugeordneten Quadranten.
+  gleich. Passt ein Zustand zu keinem Quadranten und zeigt er steigenden Stress
+  (Volatilität und Kreditspread), heißt er „Finanzstress"; seine Wahrscheinlichkeit zählt im
+  Vergleich mit Methode A zum zugeordneten Quadranten.
 - Gegencheck: Mischverteilungsmodell (Gaussian Mixture) ohne Zeitdynamik mit denselben
   Merkmalen und demselben Neuschätzungsplan.
 """
@@ -38,7 +38,7 @@ CENTERS = {
     "deflationary_bust": (-1.0, -1.0),
     "stagflation": (-1.0, 1.0),
 }
-STRESS_FEATURES = ("equity_vol_3m", "credit_spread_level")
+STRESS_FEATURES = ("equity_vol_change_6m", "credit_spread_change_6m")
 
 
 @dataclass

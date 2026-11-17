@@ -86,14 +86,14 @@ def test_forward_filter_matches_last_row_of_smoothing_on_truncated_data() -> Non
 def test_states_are_named_by_hungarian_assignment() -> None:
     means = np.array([[-1.0, -1.1, 0.0], [1.0, -0.9, 0.0], [-0.8, 1.2, 0.0], [0.9, 1.1, 0.0]])
     params = GaussianParams(means=means, variances=np.ones_like(means), weights=np.full(4, 0.25))
-    assigned, names = name_states(params, ["g", "i", "equity_vol_3m"], ["g"], ["i"], 0.75)
+    assigned, names = name_states(params, ["g", "i", "equity_vol_change_6m"], ["g"], ["i"], 0.75)
     assert assigned == ["deflationary_bust", "disinflationary_boom", "stagflation", "reflation"]
     assert names == assigned
     # B und D liegen beide bei Stagflation; einer muss den Aufschwung-Platz nehmen und
     # widerspricht ihm auf beiden Achsen. Mit hoher Volatilität heißt er „Finanzstress".
     stressed = np.array([[-1.0, -1.0, 0.0], [-1.0, 1.0, 2.0], [1.0, 1.0, 0.0], [-1.1, 1.1, 2.0]])
     p2 = GaussianParams(means=stressed, variances=np.ones_like(stressed), weights=np.full(4, 0.25))
-    assigned2, names2 = name_states(p2, ["g", "i", "equity_vol_3m"], ["g"], ["i"], 0.75)
+    assigned2, names2 = name_states(p2, ["g", "i", "equity_vol_change_6m"], ["g"], ["i"], 0.75)
     assert sorted(assigned2) == sorted(QUADRANT_MEANS)
     assert names2.count("financial_stress") == 1
     assert assigned2[names2.index("financial_stress")] == "disinflationary_boom"
@@ -102,7 +102,7 @@ def test_states_are_named_by_hungarian_assignment() -> None:
     p3 = GaussianParams(means=calm, variances=np.ones_like(calm), weights=np.full(4, 0.25))
     assert (
         "financial_stress"
-        not in name_states(p3, ["g", "i", "equity_vol_3m"], ["g"], ["i"], 0.75)[1]
+        not in name_states(p3, ["g", "i", "equity_vol_change_6m"], ["g"], ["i"], 0.75)[1]
     )
 
 
@@ -187,7 +187,11 @@ def test_comparison_end_to_end_on_demo(config: AppConfig, demo_project: ProjectP
     assert 0.0 <= cmp.agreement_rate <= 1.0
     assert cmp.conviction.dropna().between(0, 1).all()
     assert cmp.explanations.dropna().str.len().min() > 20
-    assert set(cmp.b.features.columns) >= {"stock_bond_corr_12m", "equity_vol_3m", "us_cli"}
+    assert set(cmp.b.features.columns) >= {
+        "stock_bond_corr_change_6m",
+        "equity_vol_change_6m",
+        "us_cli",
+    }
 
 
 def test_no_lookahead_in_method_b(

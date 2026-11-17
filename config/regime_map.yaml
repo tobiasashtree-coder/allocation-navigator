@@ -39,7 +39,7 @@ credit_cycle:
 
 # Methode B (Abschnitt 5): Hidden-Markov-Modell mit gaußschen Verteilungen (diagonal).
 # Merkmale: die Rohindikatoren aus 4.1 ohne Handgewichtung (USA, als Point-in-Time-z-Werte)
-# und vier Marktmerkmale. Fehlende Werte gelten als 0 (= Durchschnitt), solange mindestens
+# und vier Marktmerkmale, alle als 6-Monats-Veränderung (Prüfpunkt M3, 17.11.2026). Fehlende Werte gelten als 0 (= Durchschnitt), solange mindestens
 # min_feature_share der Merkmale vorliegt. Neuschätzung mit expandierendem Fenster einmal je
 # Jahr (nach dem Monatsende von refit_month), dazwischen monatlich gefiltert.
 hmm:
@@ -66,12 +66,12 @@ hmm:
     - us_ppi
     - commodity_prices
   market_features:
-    - stock_bond_corr_12m
-    - equity_vol_3m
+    - stock_bond_corr_change_6m
+    - equity_vol_change_6m
     - real_yield_change_6m
-    - credit_spread_level
+    - credit_spread_change_6m
   min_feature_share: 0.5
-  stress_threshold: 0.75     # Zustand ohne passenden Quadranten mit hohem Stress heißt "Finanzstress"
+  stress_threshold: 0.75     # Zustand ohne passenden Quadranten mit steigendem Stress heißt "Finanzstress"
 
 # Bekannte Episoden für den Plausibilitätscheck (Abnahme M2). "expected" nennt die
 # Quadranten, die ökonomisch plausibel sind; geprüft wird, welcher Anteil der Monate darauf

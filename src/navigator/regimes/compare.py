@@ -22,10 +22,10 @@ from navigator.regimes.rules import LABELS
 STATE_LABELS = {**LABELS, "financial_stress": "Finanzstress"}
 
 FEATURE_LABELS = {
-    "stock_bond_corr_12m": ("Aktien-Anleihen-Korrelation", "steigender", "sinkender"),
-    "equity_vol_3m": ("Aktienvolatilität", "hoher", "niedriger"),
+    "stock_bond_corr_change_6m": ("Aktien-Anleihen-Korrelation", "steigender", "sinkender"),
+    "equity_vol_change_6m": ("Aktienvolatilität", "steigender", "sinkender"),
     "real_yield_change_6m": ("Realrenditen", "steigender", "fallender"),
-    "credit_spread_level": ("Kreditspread-Niveau", "hohen", "niedrigen"),
+    "credit_spread_change_6m": ("Kreditspreads", "sich ausweitender", "sich einengender"),
 }
 
 
