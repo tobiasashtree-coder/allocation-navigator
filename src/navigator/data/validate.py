@@ -214,6 +214,42 @@ def cross_check(primary: pd.DataFrame, secondary: pd.DataFrame, tolerance: float
     return joined[joined["diff"].abs() > tolerance]
 
 
+def cross_check_detail(
+    primary: pd.DataFrame, secondary: pd.DataFrame, tolerance: float
+) -> dict[str, object]:
+    """Kennzahlen zur Diagnose, welche Quelle bei Abweichungen richtig liegt.
+
+    Häufen sich die Abweichungen im Dezember oder vor 2000, deutet das auf fehlende oder
+    falsch datierte Ausschüttungen hin. Die annualisierte Rendite beider Quellen zeigt,
+    welche Quelle systematisch mehr oder weniger Ausschüttungen einrechnet.
+    """
+    first = to_month_end(primary.set_index("obs_date")["value"]).pct_change(fill_method=None)
+    second = to_month_end(secondary.set_index("obs_date")["value"]).pct_change(fill_method=None)
+    joined = pd.concat([first, second], axis=1, join="inner").dropna()
+    joined.columns = ["primary", "secondary"]
+    if joined.empty:
+        return {"Monate": 0}
+    diff = joined["primary"] - joined["secondary"]
+    over = diff[diff.abs() > tolerance]
+    years = len(joined) / 12.0
+
+    def cagr(series: pd.Series) -> float:
+        return float((1.0 + series).prod() ** (1.0 / years) - 1.0)
+
+    worst = over.abs().sort_values(ascending=False).index[:6]
+    return {
+        "Monate": len(joined),
+        "von": joined.index.min().strftime("%Y-%m"),
+        "über Toleranz": len(over),
+        "davon vor 2000": int((over.index.year < 2000).sum()),
+        "davon Dezember": int((over.index.month == 12).sum()),
+        "Rendite p.a. Erstquelle": cagr(joined["primary"]),
+        "Rendite p.a. Zweitquelle": cagr(joined["secondary"]),
+        "Korrelation": float(joined["primary"].corr(joined["secondary"])),
+        "größte Abweichungen": ", ".join(f"{d:%Y-%m} {over[d]:+.2%}" for d in sorted(worst)),
+    }
+
+
 def summarize_cross_check(
     deviations: pd.DataFrame, scope: str, names: tuple[str, str], tolerance: float
 ) -> list[Finding]:

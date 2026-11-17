@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from navigator.config import SourcesConfig
+from navigator.config import SourcesConfig, source_base
 from navigator.data.providers.base import (
     Capabilities,
     License,
@@ -104,9 +104,9 @@ def rank_providers(
 ) -> list[tuple[str, Provider, str]]:
     """Nutzbare Quellen einer Reihe, höchste Priorität zuerst: (Name, Provider, Symbol)."""
     ranked = [
-        (providers[name].config.priority, name, providers[name], symbol)
+        (providers[source_base(name)].config.priority, name, providers[source_base(name)], symbol)
         for name, symbol in symbols.items()
-        if name in providers and providers[name].available()
+        if source_base(name) in providers and providers[source_base(name)].available()
     ]
     ranked.sort(key=lambda item: (item[0], item[1]))
     return [(name, provider, symbol) for _, name, provider, symbol in ranked]

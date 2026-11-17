@@ -134,7 +134,10 @@ indicators:
     name: Arbeitslosenquote Eurozone (invertiert)
     region: EA
     axis: growth
-    symbols: {eurostat: "une_rt_m/M.SA.TOTAL.PC_ACT.T.EA20"}
+    symbols:
+      ecb: "LFSI/M.I9.S.UNEHRT.TOTAL0.15_74.T"
+      eurostat: "une_rt_m/M.SA.TOTAL.PC_ACT.T.EA20"
+      "eurostat#2": "une_rt_m/M.SA.Y15-74.PC_ACT.T.EA20"
     publication_lag: {months: 2}
     change: diff
     invert: true
@@ -156,7 +159,11 @@ indicators:
     name: Kern-HVPI Eurozone (3M annualisiert minus 12M)
     region: EA
     axis: inflation
-    symbols: {ecb: "ICP/M.U2.N.XEF000.4.INX"}
+    symbols:
+      ecb: "ICP/M.U2.Y.XEF000.3.INX"
+      "ecb#2": "ICP/M.U2.N.XEF000.4.INX"
+      eurostat: "prc_hicp_midx/M.I15.TOT_X_NRG_FOOD.EA"
+      "eurostat#2": "prc_hicp_midx/M.I25.TOT_X_NRG_FOOD.EA"
     publication_lag: {months: 1}
     change: core_momentum
   ea_ppi:
@@ -183,6 +190,37 @@ indicators:
     frequency: Q
     publication_lag: {months: 6}
     change: level
+  commodity_prices:
+    name: Rohstoffpreise weltweit (IMF, alle Rohstoffe)
+    region: GLOBAL
+    axis: inflation
+    symbols: {fred: PALLFNFINDEXM, "fred#2": PPIACO}
+    publication_lag: {months: 1}
+    change: pct
+    note: Rohstoffpreis-Momentum laut 4.1; IMF-Index ab 1992, davor Erzeugerpreise als Ersatz.
+  ea_bund_10y:
+    name: Rendite 10J.-Bund (für die Zinskurve Eurozone)
+    region: EA
+    axis: market
+    symbols: {bundesbank: "BBSIS/M.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A"}
+    change: level
+  us_rstar:
+    name: Neutraler Realzins USA (Laubach-Williams, Echtzeit)
+    region: US
+    axis: credit_cycle
+    symbols: {static: "lw_realtime:rstar"}
+    frequency: Q
+    publication_lag: {months: 3}
+    change: level
+  us_bank_credit:
+    name: Bankkredite USA
+    region: US
+    axis: credit_cycle
+    symbols: {fred: TOTBKCR}
+    frequency: D
+    vintages: true
+    publication_lag: {days: 10}
+    change: pct
   us_policy_rate:
     name: Leitzins USA (effektive Fed Funds Rate)
     region: US

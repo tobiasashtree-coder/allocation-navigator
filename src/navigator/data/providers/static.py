@@ -242,6 +242,10 @@ class StaticProvider(Provider):
     def _datasets(self) -> dict[str, dict[str, Any]]:
         return dict(self.config.options.get("datasets", {}))
 
+    def content(self, dataset: str, spec: dict[str, Any]) -> bytes:
+        """Rohinhalt eines Datensatzes (manuelle Datei oder Download)."""
+        return self._content(dataset, spec)
+
     def _content(self, dataset: str, spec: dict[str, Any]) -> bytes:
         manual = sorted((self.static_dir / "manual").glob(f"{dataset}.*"))
         if manual:
@@ -337,6 +341,22 @@ class StaticProvider(Provider):
         if out.empty:
             raise SeriesNotFoundError(f"static: keine Werte für {request.symbol}")
         return out
+
+
+def describe_content(content: bytes, rows: int = 14) -> str:
+    """Kurzbeschreibung einer Datei: Blätter mit ihren ersten Zeilen bzw. erste Textzeilen."""
+    try:
+        sheets = pd.read_excel(io.BytesIO(content), sheet_name=None, header=None, nrows=rows)
+    except Exception:
+        text = _unzip_text(content)
+        return "\n".join(text.splitlines()[:rows])
+    parts = []
+    for name, frame in sheets.items():
+        parts.append(f"=== Blatt {name!r} ({frame.shape[1]} Spalten)")
+        for _, row in frame.iterrows():
+            cells = [str(v)[:22] for v in row.tolist()[:14]]
+            parts.append(" | ".join(cells))
+    return "\n".join(parts)
 
 
 def _unzip_text(content: bytes, member: Any = None) -> str:

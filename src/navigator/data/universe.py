@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from navigator.config import AppConfig, AssetClass, Segment
+from navigator.config import AppConfig, AssetClass, Segment, source_base
 from navigator.data.backfill import Calibration, SegmentSeries, Spliced, splice
 from navigator.data.cache import SeriesCache
 from navigator.data.fx import (
@@ -58,7 +58,8 @@ class SeriesLoader:
 
     def _order(self, symbols: dict[str, str]) -> list[tuple[str, str]]:
         def priority(name: str) -> int:
-            return self.providers[name].config.priority if name in self.providers else 10_000
+            base = source_base(name)
+            return self.providers[base].config.priority if base in self.providers else 10_000
 
         return sorted(symbols.items(), key=lambda item: (priority(item[0]), item[0]))
 

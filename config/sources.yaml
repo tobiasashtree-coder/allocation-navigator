@@ -135,7 +135,7 @@ sources:
         infra300:
           series: infra300_monthly
           url: https://www.infrastructureinvestor.com/infra300-posts-best-monthly-return-in-2026/
-          automated_access: unknown      # PEI-Bedingungen und robots.txt noch nicht geprüft
+          automated_access: forbidden    # PEI-Bedingungen, Klausel 19.1(d): keine Scraper, Bots, Data Mining
           frequency: M
       nav_companies:
         hicl: {name: HICL Infrastructure, ticker: HICL.L}
@@ -205,6 +205,17 @@ sources:
           sheet: Monthly Prices
           value_type: level
           note: "Weltbank (Pink Sheet), Monatsdurchschnitte der Rohstoffpreise ab 1960, frei verfügbar"
+        lw_realtime:
+          url: https://www.newyorkfed.org/medialibrary/media/research/economists/williams/data/Laubach_Williams_real_time_estimates.xlsx
+          format: excel
+          sheet: 0
+          value_type: level
+          note: Echtzeit-Schätzungen des neutralen Zinses (NY Fed); Layout am Prüfpunkt M2 prüfen.
+        hlw_current:
+          url: https://www.newyorkfed.org/medialibrary/media/research/economists/williams/data/Holston_Laubach_Williams_current_estimates.xlsx
+          format: excel
+          sheet: 0
+          value_type: level
         jst:
           url: https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx
           format: excel

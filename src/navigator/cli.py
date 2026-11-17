@@ -189,6 +189,26 @@ def data_sources(
     typer.echo(f"Tabelle: {target}")
 
 
+@data_app.command("inspect")
+def data_inspect(
+    dataset: str,
+    root: RootOption = None,
+    rows: Annotated[int, typer.Option(help="Anzahl Zeilen je Blatt")] = 14,
+) -> None:
+    """Zeigt Blätter und erste Zeilen eines statischen Datensatzes (zum Einrichten)."""
+    from navigator.data.pipeline import make_providers
+    from navigator.data.providers.static import StaticProvider, describe_content
+
+    config, paths = _setup(root, demo=False)
+    provider = make_providers(config, paths)["static"]
+    assert isinstance(provider, StaticProvider)
+    spec = provider.config.options.get("datasets", {}).get(dataset)
+    if spec is None:
+        typer.echo(f"Unbekannter Datensatz: {dataset}")
+        raise typer.Exit(code=1)
+    typer.echo(describe_content(provider.content(dataset, spec), rows))
+
+
 def _infra_provider(root: Path | None, demo: bool):  # type: ignore[no-untyped-def]
     from navigator.data.providers.private_infra import PrivateInfraProvider
 

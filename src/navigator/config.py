@@ -40,6 +40,15 @@ SegmentKind = Literal[
 QUADRANTS = ("disinflationary_boom", "reflation", "deflationary_bust", "stagflation")
 
 
+def source_base(name: str) -> str:
+    """Quellenname ohne Kandidaten-Endung: ``ecb#2`` → ``ecb``.
+
+    Mit ``#n`` lassen sich je Reihe mehrere Schlüssel derselben Quelle angeben; der
+    Kandidat mit der kleineren Nummer hat Vorrang.
+    """
+    return name.split("#", 1)[0]
+
+
 class StrictModel(BaseModel):
     """Basis für alle Schemas: unbekannte Schlüssel sind Fehler (Tippfehler fallen auf)."""
 
@@ -364,6 +373,10 @@ class AppConfig(StrictModel):
             if bad:
                 raise ValueError(f"base.yaml, Korb {basket}: unbekannte Klassen {sorted(bad)}")
         known_sources = set(self.sources.sources)
+        for key, indicator in self.indicators.indicators.items():
+            bad_ind = {source_base(n) for n in indicator.symbols} - known_sources
+            if bad_ind:
+                raise ValueError(f"indicators.yaml, {key}: unbekannte Quellen {sorted(bad_ind)}")
         for key, asset in self.universe.assets.items():
             for seg in asset.segments:
                 used = (
@@ -374,7 +387,7 @@ class AppConfig(StrictModel):
                 )
                 for comp in seg.components:
                     used |= set(comp.symbols)
-                bad_src = used - known_sources
+                bad_src = {source_base(n) for n in used} - known_sources
                 if bad_src:
                     raise ValueError(f"{key}/{seg.id}: unbekannte Quellen {sorted(bad_src)}")
         return self

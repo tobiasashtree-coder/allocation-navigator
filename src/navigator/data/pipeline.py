@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from navigator.config import AppConfig, PublicationLag
+from navigator.config import AppConfig, PublicationLag, source_base
 from navigator.data.cache import SeriesCache
 from navigator.data.pit import PitStore
 from navigator.data.providers import (
@@ -40,6 +40,7 @@ from navigator.data.validate import (
     check_start,
     check_universe,
     cross_check,
+    cross_check_detail,
     summarize_cross_check,
 )
 from navigator.http import HttpClient
@@ -206,9 +207,9 @@ def _fetch_spec(
     result = FetchResult(spec.key, spec.kind, "fehlgeschlagen", optional=spec.optional)
     if not ranked:
         reasons = [
-            f"{name}: {providers[name].unavailable_reason() or 'unbekannt'}"
+            f"{name}: {providers[source_base(name)].unavailable_reason() or 'unbekannt'}"
             for name in spec.symbol_map()
-            if name in providers
+            if source_base(name) in providers
         ]
         result.message = "keine nutzbare Quelle (" + "; ".join(reasons) + ")"
         return result
@@ -356,8 +357,9 @@ def series_table(config: AppConfig, cache: SeriesCache) -> pd.DataFrame:
     for spec in collect_specs(config):
         for name, symbol in spec.symbols:
             cached = cache.read(name, symbol)
+            base = source_base(name)
             enabled = (
-                config.sources.sources[name].enabled if name in config.sources.sources else False
+                config.sources.sources[base].enabled if base in config.sources.sources else False
             )
             if cached is None and not enabled:
                 continue
@@ -391,6 +393,7 @@ def run_validation(
         demo=paths.demo,
     )
     findings: list[Finding] = []
+    cross_rows: list[dict[str, object]] = []
     tolerance = config.sources.cross_check_tolerance
     for spec in collect_specs(config):
         available = [(n, s, cache.read(n, s)) for n, s in spec.symbols]
@@ -400,7 +403,12 @@ def run_validation(
             findings.append(Finding(severity, spec.key, "Abruf", "keine Daten im Cache"))  # type: ignore[arg-type]
             continue
         present.sort(
-            key=lambda item: providers[item[0]].config.priority if item[0] in providers else 9999
+            key=lambda item: (
+                providers[source_base(item[0])].config.priority
+                if source_base(item[0]) in providers
+                else 9999,
+                item[0],
+            )
         )
         name, _symbol, cached = present[0]
         assert cached is not None
@@ -425,6 +433,14 @@ def run_validation(
                 for other_name, _other_symbol, other in present[1:]:
                     assert other is not None
                     deviations = cross_check(frame, other[0], tolerance)
+                    cross_rows.append(
+                        {
+                            "Reihe": spec.key,
+                            "Erstquelle": name,
+                            "Zweitquelle": other_name,
+                            **cross_check_detail(frame, other[0], tolerance),
+                        }
+                    )
                     findings += summarize_cross_check(
                         deviations, scope, (name, other_name), tolerance
                     )
@@ -465,6 +481,7 @@ def run_validation(
             )
     report.notes.append("Assetklassen mit Monatsreihe je Basiswährung: " + ", ".join(complete))
     report.tables["Point-in-Time-Speicher (Makroreihen)"] = _pit_table(config, PitStore(paths.pit))
+    report.tables["Zweitquelle im Detail"] = pd.DataFrame(cross_rows)
     report.tables["Quellen"] = sources_table(config, providers)
     report.tables["Rohreihen je Quelle"] = series_table(config, cache)
     report.findings = findings
