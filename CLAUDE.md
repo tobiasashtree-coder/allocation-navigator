@@ -6,10 +6,10 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 
 ## Stand
 
-- Fertig: **M0** (Grundgerüst), **M1** (Datenschicht, Prüfpunkt freigegeben am 17.11.2026),
-  **M2** (Methode A: Scores, Quadranten, kurzfristiger Schuldenzyklus).
-- Abnahme M2: `docs/checkpoints/M2.md`. Als Nächstes **M3** (Methode B und Vergleich), danach
-  Prüfpunkt.
+- Fertig: **M0**, **M1** (Prüfpunkt freigegeben), **M2** (Methode A), **M3** (Methode B und
+  Vergleich).
+- Offen: **Prüfpunkt M3**, siehe `docs/checkpoints/M3.md` (Entscheidung zu den Merkmalen von
+  Methode B). Vor der Freigabe nicht mit M4 beginnen.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.
@@ -74,3 +74,7 @@ uv run navigator data update --demo && uv run navigator data validate --demo   #
 | `features/credit_cycle.py` | Kurzfristiger Schuldenzyklus (Mehrheitsregel, Schwellen in `regime_map.yaml`) |
 | `regimes/rules.py` | Quadranten-Wahrscheinlichkeiten, neutrales Band, Bestätigungsregel |
 | `regimes/method_a.py` | Methode A gesamt, Episoden-Check, Bericht (`navigator regime run --method a`) |
+| `features/market.py` | Merkmale der Methode B (Indikatoren plus Marktmerkmale, standardisiert) |
+| `regimes/hmm.py` | HMM mit eigenem Vorwärtsfilter (nur gefiltert), GMM-Gegencheck, Benennung |
+| `regimes/compare.py` | Übereinstimmung, Kreuztabelle, Begründung, Überzeugung |
+| `regimes/method_b.py` | Methode B gesamt und Bericht (`navigator regime run --method both`) |

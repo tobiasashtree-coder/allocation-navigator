@@ -61,6 +61,17 @@ Eintrag auf dem Lauf mit echten Daten vom 17.11.2026 beruht, steht „Live-Lauf"
 | E-48 | **Schuldenzyklus: Mehrheitsregel.** Eine Phase gilt, wenn mindestens zwei ihrer drei typischen Signale aus der Tabelle in 4.3 vorliegen; Zinskurve und Spread vor 1982 bzw. 1986 aus Monatsdurchschnitten (ab 1953). | Erste Fassung: alle Signale gleichzeitig. | **Offen dokumentiert:** Die erste Fassung ordnete 1974 und 2001 als „mittlere Expansion" ein. Ursache war vor allem, dass Kurve und Spread vor 1982/86 fehlten. Die Mehrheitsregel folgt dem Wortlaut der Tabelle; die Schwellen selbst wurden nicht verändert. Die Änderung erfolgte nach Ansicht der Episoden und ist deshalb ein Risiko für Überanpassung; der Prüfzeitraum ab 2008 bleibt für M6 unberührt. |
 | E-49 | Episoden für den Plausibilitätscheck stehen in `regime_map.yaml` und werden nur berichtet, nie zur Kalibrierung genutzt. | Episoden im Code. | Transparenz; Regel 3 (keine Optimierung auf die Historie). |
 
+## Methode B (M3, 17.11.2026)
+
+| Nr. | Entscheidung | Alternativen | Grund |
+| --- | --- | --- | --- |
+| E-50 | Merkmale der Methode B: die elf US-Indikatoren aus 4.1 als Point-in-Time-z-Werte (ohne Handgewichtung) plus vier Marktmerkmale; nur USA. | Alle Regionen gemeinsam. | Die Eurozone-Reihen beginnen erst 2000; mit ihnen wäre die Trainingshistorie zu kurz. Verglichen wird B daher mit A für die USA. |
+| E-51 | Marktmerkmale: Korrelation täglicher S&P-500-Renditen mit −Δ(10J.-Rendite) über 252 Tage; Volatilität über 63 Tage; Realrendite = 10J.-Rendite − Kerninflation über 12 Monate (6-Monats-Veränderung); Kreditspread Baa − 10J. Alle mit demselben rollierenden z-Wert wie in 4.1. | Realrendite aus TIPS (`DFII10`). | TIPS-Renditen gibt es erst ab 2003; die Konstruktion reicht bis in die 1960er. Der S&P 500 ist ein Kursindex (`^GSPC`); für Korrelation und Volatilität genügt das. |
+| E-52 | Fehlende Merkmale gelten als 0 (Durchschnitt der z-Werte), solange mindestens die Hälfte vorliegt. | Nur vollständige Zeilen. | Mehrere Merkmale beginnen spät (Breakeven 2003); vollständige Zeilen gäbe es erst ab 2003. |
+| E-53 | HMM mit diagonaler Kovarianz, 4 Zustände, 5 Startwerte, Neuschätzung jedes Jahr im Dezember mit expandierendem Fenster (mindestens 120 Monate). Gefilterte Wahrscheinlichkeiten über einen eigenen Vorwärtsfilter. | `hmmlearn.predict_proba` (geglättet); monatliche Neuschätzung. | Diagonal ist Voraussetzung für die exakte Zerlegung je Merkmal (5.3). `predict_proba` glättet und nutzt damit künftige Daten; ein Test stellt sicher, dass der Filter nie der Glättung entspricht. |
+| E-54 | Benennung je Neuschätzung über die mittleren Wachstums- und Inflationswerte der Zustände (Ungarische Methode); ein Zustand, der seinem Quadranten auf beiden Achsen widerspricht und hohen Stress zeigt (Volatilität und Spread im Mittel über 0,75), heißt „Finanzstress". Für die Quadranten-Wahrscheinlichkeiten zählt er zum zugeordneten Quadranten. | Benennung per Abgleich mit dem Vorjahresmodell. | Die Zuordnung an festen Quadranten-Mittelpunkten hält die Namen über Neuschätzungen stabil (Label Switching). |
+| E-55 | BIC für 3 bis 6 Zustände wird nur über die ganze Historie berichtet und beeinflusst nichts. | Zustandszahl per BIC wählen. | Eine Wahl per BIC über die ganze Historie wäre Look-ahead; 4 Zustände sind für den Vergleich mit den Quadranten vorgegeben. |
+
 ## Festzuschreibende Parameter mit Status „Entwurf"
 
 Diese Werte stehen in `config/`, sind aber in der Spezifikation nicht oder nicht eindeutig

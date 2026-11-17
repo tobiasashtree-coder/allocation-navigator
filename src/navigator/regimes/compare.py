@@ -49,6 +49,11 @@ def agreement(regime_a: pd.Series, regime_b: pd.Series) -> tuple[float, pd.DataF
     return rate, table
 
 
+def _num(value: float, digits: int) -> str:
+    """Zahl mit Vorzeichen und deutschem Dezimalkomma."""
+    return f"{value:+.{digits}f}".replace(".", ",")
+
+
 def feature_name(key: str, names: dict[str, str]) -> str:
     """Kurzer lesbarer Name eines Merkmals (ohne Klammerzusatz)."""
     if key in FEATURE_LABELS:
@@ -65,13 +70,13 @@ def describe(key: str, value: float, names: dict[str, str]) -> str:
             if label.endswith("Niveau")
             else f"{up if value > 0 else down} {label}"
         )
-    return f"{feature_name(key, names)} (z {value:+.1f})".replace(".", ",")
+    return f"{feature_name(key, names)} (z {_num(value, 1)})"
 
 
 def describe_a(key: str, axis: str, contribution: float, names: dict[str, str]) -> str:
     """Indikator der Methode A mit Achse und Beitrag zum Score."""
     achse = "Wachstum" if axis == "growth" else "Inflation"
-    return f"{feature_name(key, names)} ({achse} {contribution:+.2f})".replace(".", ",")
+    return f"{feature_name(key, names)} ({achse} {_num(contribution, 2)})"
 
 
 def b_drivers(result: MethodBResult, when: pd.Timestamp, top: int = 2) -> pd.DataFrame:
