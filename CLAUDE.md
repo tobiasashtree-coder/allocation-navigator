@@ -8,8 +8,9 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 
 - Fertig: **M0**, **M1**, **M2** (Methode A), **M3** (Methode B und Vergleich; Prüfpunkt
   freigegeben am 17.11.2026 mit Variante 2, Marktmerkmale als Veränderung).
-- In Arbeit: **M4** (Schuldenzyklus-Overlay, freigegeben am 17.11.2026). Danach M5, M6 und
-  Prüfpunkt nach M6.
+- Fertig: **M4** (Schuldenzyklus-Overlay, `docs/checkpoints/M4.md`).
+- Nächster Schritt: **M5** (Empfehlungs-Engine), erst nach Freigabe durch Tobias. Danach M6
+  und Prüfpunkt nach M6.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.

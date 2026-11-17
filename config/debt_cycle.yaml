@@ -185,7 +185,9 @@ score:
   calibration:
     quantiles: [0.35, 0.60, 0.80]
     end_year: 2020
-  thresholds: null              # nach der Kalibrierung mit echten Daten hier festschreiben
+  # Festgeschrieben am 17.11.2026 aus dem Lauf mit echten Daten (2519 Länder-Jahre 1874–2020,
+  # Bericht docs/checkpoints/M4-schuldenzyklus-2026-11-17.md).
+  thresholds: [42.6, 52.9, 62.9]
 
   # Episoden zur qualitativen Plausibilisierung (Jahresende; Fiskaldaten des Vorjahres).
   episodes:
