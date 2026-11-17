@@ -15,7 +15,7 @@ calibration:
   shrinkage: 0.5         # Schrumpfung von alpha/beta Richtung (0, 1)
   min_correlation: 0.6   # darunter passt der Backfill zu schlecht: keine Kalibrierung, Warnung
   beta_bounds: [0.5, 2.0]
-  alpha_bound_monthly: 0.005
+  alpha_bound_monthly: 0.0   # kein Niveauausgleich: aus 36 Monaten nicht belastbar schätzbar
 
 assets:
   # ------------------------------------------------------------------ Aktien
@@ -326,12 +326,12 @@ assets:
         currency: USD
         expected_start: "1968-04"
         symbols:
-          bundesbank: "BBEX3/D.XAU.USD.EA.AC.C04"
-          static: "gold_manual:USD"
+          bundesbank: "BBEX3/D.XAU.USD.EA.AC.C05"
+          static: "worldbank_pinksheet:Gold"
         note: >-
-          Londoner Nachmittagsfixing in USD (Bundesbank, täglich). World-Gold-Council-
-          Monatspreise brauchen eine Registrierung und können als CSV manuell abgelegt
-          werden (data/static/manual/gold_monthly_usd.csv).
+          Londoner Nachmittagsfixing in USD (Bundesbank, täglich); ersatzweise die
+          Monatsdurchschnitte der Weltbank ab 1960. World-Gold-Council-Monatspreise
+          brauchen eine Registrierung (Datensatz gold_manual, CSV von Hand ablegen).
 
   commodities:
     name: Rohstoffe breit

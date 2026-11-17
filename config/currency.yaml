@@ -18,7 +18,10 @@ fx_series:
   - {currency: CHF, quote: per_eur, symbols: {ecb: "EXR/D.CHF.EUR.SP00.A"}}
   - {currency: JPY, quote: per_eur, symbols: {ecb: "EXR/D.JPY.EUR.SP00.A"}}
   - {currency: EUR, quote: usd_per_unit, symbols: {fred: DEXUSEU}, note: Zweitquelle ab 1999}
-  - {currency: EUR, quote: dem_per_usd, symbols: {fred: DEXGEUS}, note: synthetischer EUR vor 1999}
+  - currency: EUR
+    quote: dem_per_usd
+    symbols: {bundesbank: "BBEX3/D.USD.DEM.AA.AC.000", fred: EXGEUS}
+    note: synthetischer EUR vor 1999 (Frankfurter Fixing 1948-1998; ersatzweise Monatsmittel der Fed)
   - {currency: GBP, quote: usd_per_unit, symbols: {fred: DEXUSUK}}
   - {currency: CHF, quote: per_usd, symbols: {fred: DEXSZUS}}
   - {currency: JPY, quote: per_usd, symbols: {fred: DEXJPUS}}

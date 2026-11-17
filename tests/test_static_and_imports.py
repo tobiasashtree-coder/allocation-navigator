@@ -28,6 +28,7 @@ from navigator.data.providers.private_infra import (
 )
 from navigator.data.providers.static import (
     StaticProvider,
+    excel_table,
     looks_like_level,
     parse_french_csv,
     parse_french_dat,
@@ -126,18 +127,42 @@ def test_static_provider_explains_manual_fallback(tmp_path: Path) -> None:
         )
     # Manuell abgelegte Datei hat Vorrang vor dem Download.
     sheet = pd.DataFrame(
-        [["AQR", None, None]] * 2
-        + [["Date", "TSMOM", "TSMOM^EQ"], ["01/31/1985", 0.02, 0.01], ["02/28/1985", -0.01, 0.0]]
+        [
+            ["AQR", None, None],
+            ["The TSMOM factors are described in the paper.", None, None],
+            ["Date", "TSMOM", "TSMOM^EQ"],
+            ["01/31/1985", 0.02, 0.01],
+            ["02/28/1985", -0.01, 0.0],
+        ]
     )
     manual = tmp_path / "manual"
     manual.mkdir()
     sheet.to_excel(manual / "aqr_tsmom.xlsx", header=False, index=False)
-    cfg.options["datasets"]["aqr_tsmom"]["skiprows"] = 2
     frame = StaticProvider(cfg, http, tmp_path).fetch_series(
         SeriesRequest("aqr_tsmom:TSMOM", "returns")
     )
     assert list(frame["value"]) == [0.02, -0.01]
     assert frame["obs_date"].iloc[1] == pd.Timestamp("1985-02-28")
+
+
+def test_excel_header_row_is_found_automatically() -> None:
+    """Vorspannzeilen dürfen sich ändern; Monatsangaben wie 1960M01 werden verstanden."""
+    grid = pd.DataFrame(
+        [
+            ["World Bank Commodity Price Data (The Pink Sheet)", None, None],
+            ["monthly prices in nominal US dollars; gold and silver per troy oz", None, None],
+            [None, "Crude oil, average", "Gold"],
+            [None, "($/bbl)", "($/troy oz)"],
+            ["1960M01", 1.63, 35.27],
+            ["1960M02", 1.63, 35.27],
+            ["1960M03", 1.63, 35.30],
+        ]
+    )
+    table = excel_table(grid, "Gold")
+    assert list(table["Gold"]) == [35.27, 35.27, 35.30]
+    assert table.index[0] == pd.Timestamp("1960-01-31")
+    with pytest.raises(SeriesNotFoundError, match="textreichste Zeile"):
+        excel_table(grid, "Platinum")
 
 
 def test_static_positional_excel_detects_index_levels(tmp_path: Path) -> None:

@@ -28,6 +28,7 @@ from navigator.http import HttpClient, HttpError
 log = logging.getLogger(__name__)
 
 Downloader = Callable[[str, date | None, date | None], pd.DataFrame]
+MIN_FULL_HISTORY = 365  # weniger Tage gelten nicht als volle Historie
 
 
 def _yfinance_download(symbol: str, start: date | None, end: date | None) -> pd.DataFrame:
@@ -155,8 +156,9 @@ class CoinMetricsProvider(Provider):
         """Lädt Tageskurse eines Assets (z. B. ``btc``) in USD."""
         self._require_available()
         base = str(self.config.options.get("api_url", "https://community-api.coinmetrics.io/v4"))
-        metrics = list(self.config.options.get("metrics", ["ReferenceRateUSD", "PriceUSD"]))
+        metrics = list(self.config.options.get("metrics", ["PriceUSD", "ReferenceRateUSD"]))
         last_error: Exception | None = None
+        best: pd.DataFrame | None = None
         for metric in metrics:
             try:
                 rows = self._fetch_metric(base, request, metric)
@@ -164,14 +166,26 @@ class CoinMetricsProvider(Provider):
                 last_error = exc
                 log.warning("coinmetrics: Metrik %s nicht abrufbar (%s)", metric, exc)
                 continue
-            if rows:
-                frame = pd.DataFrame(
-                    {
-                        "obs_date": [str(r["time"])[:10] for r in rows],
-                        "value": [r.get(metric) for r in rows],
-                    }
-                )
-                return clip_dates(normalize_frame(frame), request.start, request.end)
+            if not rows:
+                continue
+            frame = pd.DataFrame(
+                {
+                    "obs_date": [str(r["time"])[:10] for r in rows],
+                    "value": [r.get(metric) for r in rows],
+                }
+            )
+            frame = clip_dates(normalize_frame(frame), request.start, request.end)
+            if best is None or len(frame) > len(best):
+                best = frame
+            if request.start is not None or len(frame) >= MIN_FULL_HISTORY:
+                return frame
+            log.warning(
+                "coinmetrics: Metrik %s liefert nur %d Tage, versuche die nächste",
+                metric,
+                len(frame),
+            )
+        if best is not None and len(best):
+            return best
         raise SeriesNotFoundError(f"coinmetrics: keine Kurse für {request.symbol} ({last_error})")
 
     def _fetch_metric(self, base: str, request: SeriesRequest, metric: str) -> list[dict[str, Any]]:

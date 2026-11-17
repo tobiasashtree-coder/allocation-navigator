@@ -167,7 +167,7 @@ class CalibrationConfig(StrictModel):
     shrinkage: float = 0.5
     min_correlation: float = 0.6
     beta_bounds: tuple[float, float] = (0.5, 2.0)
-    alpha_bound_monthly: float = 0.005
+    alpha_bound_monthly: float = 0.0
 
 
 class UniverseConfig(StrictModel):

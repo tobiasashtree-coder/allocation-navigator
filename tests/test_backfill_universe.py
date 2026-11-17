@@ -58,6 +58,15 @@ def test_calibration_recovers_relationship_with_shrinkage() -> None:
     assert before.std() == pytest.approx(beta * older[:"1999-12-31"].std(), rel=1e-9)
 
 
+def test_level_difference_is_not_extrapolated_by_default() -> None:
+    """Ein Renditevorsprung des Proxys im Fenster wird nicht auf Jahrzehnte davor übertragen."""
+    newer, older = _pair(beta=1.0, alpha=0.004, noise=0.001)
+    alpha, beta, _, _ = calibrate(newer, older, newer.index.min(), CAL)
+    assert alpha == 0.0 and beta == pytest.approx(1.0, abs=0.02)
+    loose = CalibrationConfig(alpha_bound_monthly=0.005)
+    assert calibrate(newer, older, newer.index.min(), loose)[0] == pytest.approx(0.002, abs=5e-4)
+
+
 def test_poorly_matching_backfill_is_not_calibrated() -> None:
     rng = np.random.default_rng(11)
     index = pd.date_range("1990-01-31", periods=240, freq="ME")

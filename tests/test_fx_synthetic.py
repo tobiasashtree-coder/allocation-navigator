@@ -57,7 +57,7 @@ def test_fx_rates_combine_ecb_with_legacy_dem(config: AppConfig) -> None:
         table = {
             "EXR/D.USD.EUR.SP00.A": _daily("1999-01-04", "1999-03-31", 1.10),
             "EXR/D.GBP.EUR.SP00.A": _daily("1999-01-04", "1999-03-31", 0.70),
-            "DEXGEUS": _daily("1998-10-01", "1998-12-31", 1.70),  # DEM je USD
+            "BBEX3/D.USD.DEM.AA.AC.000": _daily("1998-10-01", "1998-12-31", 1.70),  # DEM je USD
             "DEXUSUK": _daily("1998-10-01", "1999-03-31", 1.65),  # USD je GBP
             "DEXSZUS": _daily("1998-10-01", "1999-03-31", 1.40),  # CHF je USD
         }

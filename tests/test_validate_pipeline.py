@@ -95,6 +95,14 @@ def test_staleness_start_and_universe_checks() -> None:
     assert "46 Tage alt" in check_staleness(meta, "x", now)[0].message
     meta.stale, meta.error = True, "Timeout"
     assert len(check_staleness(meta, "x", now)) == 2
+    # Abgeschlossene Reihen (Backfill, EONIA) werden nicht auf ihr Alter geprüft,
+    # ein Quellenausfall aber weiterhin gemeldet.
+    assert len(check_staleness(meta, "x", now, historical=True)) == 1
+    monthly = pd.DataFrame({"obs_date": pd.date_range("2026-01-31", periods=9, freq="ME")})
+    fresh = CacheMeta("p", "s", "yield", "2026-11-01T00:00:00+00:00", "2026-01-31", "2026-09-30", 9)
+    assert check_staleness(fresh, "x", now, monthly) == []  # Monatsreihe: 47 Tage sind normal
+    assert check_staleness(fresh, "x", now) != []
+    assert check_start("2010-07", pd.Timestamp("2026-11-11"), "x")[0].severity == "Warnung"
     assert check_start("2000-01", pd.Timestamp("2000-06-01"), "x") == []
     assert "+60 Monate" in check_start("2000-01", pd.Timestamp("2005-01-03"), "x")[0].message
     index = pd.date_range("2020-01-31", periods=24, freq="ME")
@@ -147,7 +155,10 @@ def test_spec_collection_covers_everything(config: AppConfig) -> None:
     indpro = next(s for s in specs if s.key == "indicator.us_indpro")
     assert indpro.vintages and indpro.pit and indpro.lag().months == 1
     vfinx = next(s for s in specs if s.key == "asset.equity_us.vfinx")
-    assert vfinx.cross_check and vfinx.expected_start == "1976-08"
+    assert vfinx.cross_check and vfinx.expected_start == "1976-08" and not vfinx.historical
+    closed = {s.key for s in specs if s.historical}
+    assert {"rate.EUR.eonia", "fx.EUR.dem_per_usd", "asset.equity_us.french_us_market"} <= closed
+    assert "rate.EUR.estr" not in closed and "rate.CHF.ch_3m_interbank" not in closed
 
 
 def test_fallback_to_second_source_is_reported(config: AppConfig, demo_paths: ProjectPaths) -> None:

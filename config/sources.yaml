@@ -97,7 +97,7 @@ sources:
     license_url: https://docs.coinmetrics.io/packages/coin-metrics-community-data
     options:
       api_url: https://community-api.coinmetrics.io/v4
-      metrics: [ReferenceRateUSD, PriceUSD]
+      metrics: [PriceUSD, ReferenceRateUSD]   # ReferenceRateUSD liefert ohne Lizenz nur wenige Tage
   issuer_nav:
     priority: 40
     rate_limit_per_min: 10
@@ -184,12 +184,10 @@ sources:
           url: https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Time-Series-Momentum-Factors-Monthly.xlsx
           format: excel
           sheet: 0
-          skiprows: 17
         aqr_commodities:
           url: https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Commodities-for-the-Long-Run-Index-Level-Data-Monthly.xlsx
           format: excel
           sheet: 0
-          skiprows: 17
         nareit:
           url: https://www.reit.com/sites/default/files/returns/MonthlyHistoricalReturns.xls
           format: excel_positional
@@ -201,11 +199,16 @@ sources:
           format: manual_csv
           path: manual/gold_monthly_usd.csv
           value_type: level
+        worldbank_pinksheet:
+          url: https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx
+          format: excel
+          sheet: Monthly Prices
+          value_type: level
+          note: "Weltbank (Pink Sheet), Monatsdurchschnitte der Rohstoffpreise ab 1960, frei verfügbar"
         jst:
           url: https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx
           format: excel
           sheet: 0
-          skiprows: 0
           note: Jordà-Schularick-Taylor; wird ab M4 für die Kalibrierung des Schuldenzyklus genutzt.
 
   # ---------------------------------- kostenpflichtig: vorbereitet, deaktiviert

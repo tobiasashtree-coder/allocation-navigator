@@ -110,18 +110,53 @@ def _to_float(value: Any) -> float:
         return float("nan")
 
 
-def parse_excel(content: bytes, sheet: Any, skiprows: int) -> pd.DataFrame:
-    """Liest eine Excel-Tabelle: erste Zeile nach ``skiprows`` = Kopf, erste Spalte = Datum."""
-    raw = pd.read_excel(io.BytesIO(content), sheet_name=sheet, header=None, skiprows=skiprows)
-    header = [str(c).strip() for c in raw.iloc[0]]
-    body = raw.iloc[1:].copy()
-    body.columns = header
-    dates = pd.to_datetime(body.iloc[:, 0], errors="coerce")
-    body = body[dates.notna().to_numpy()]
-    index = pd.DatetimeIndex(dates.dropna()) + pd.offsets.MonthEnd(0)
-    table = body.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
-    table.index = index
-    return table.loc[:, [c for c in table.columns if c and c.lower() != "nan"]]
+def _parse_period(value: Any) -> pd.Timestamp | None:
+    """Liest ein Datum oder eine Monatsangabe wie ``1960M01`` bzw. ``196001``."""
+    if isinstance(value, pd.Timestamp):
+        return value
+    text = str(value).strip()
+    if match := re.fullmatch(r"((?:18|19|20)\d{2})[Mm-]?(0[1-9]|1[0-2])", text):
+        return pd.Timestamp(int(match[1]), int(match[2]), 1)
+    if not text or text.lower() in ("nan", "nat", "none") or not re.search(r"\d{4}", text):
+        return None
+    stamp = pd.to_datetime(text, errors="coerce")
+    return None if pd.isna(stamp) else stamp
+
+
+def read_excel_grid(content: bytes, sheet: Any) -> pd.DataFrame:
+    """Liest ein Tabellenblatt roh, ohne Kopfzeile."""
+    return pd.read_excel(io.BytesIO(content), sheet_name=sheet, header=None)
+
+
+def excel_table(grid: pd.DataFrame, column_hint: str, search_rows: int = 80) -> pd.DataFrame:
+    """Findet die Kopfzeile selbst und liefert die Tabelle darunter.
+
+    Kopfzeile ist die erste Zeile, in der eine Zelle dem gesuchten Spaltennamen
+    entspricht (ersatzweise ihn enthält) und unter der die erste Spalte Datumsangaben
+    trägt. So bleibt der Parser robust, wenn ein Anbieter Vorspannzeilen ergänzt.
+    """
+    wanted = column_hint.split("+")[0].strip().lower()
+    limit = min(search_rows, len(grid))
+    cells = [[str(v).strip().lower() for v in grid.iloc[i]] for i in range(limit)]
+    exact = [i for i in range(limit) if wanted in cells[i]]
+    partial = [i for i in range(limit) if any(wanted in c for c in cells[i])]
+    for index in exact + partial:
+        below = grid.iloc[index + 1 : index + 6, 0]
+        if not any(_parse_period(v) is not None for v in below):
+            continue
+        header = [str(v).strip() for v in grid.iloc[index]]
+        body = grid.iloc[index + 1 :]
+        dates = [_parse_period(v) for v in body.iloc[:, 0]]
+        keep = [d is not None for d in dates]
+        table = body.loc[keep].iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
+        table.columns = header[1:]
+        table.index = pd.DatetimeIndex([d for d in dates if d is not None]) + pd.offsets.MonthEnd(0)
+        return table.loc[:, [c for c in table.columns if c and c.lower() != "nan"]]
+    texts = max(cells, key=lambda row: sum(1 for c in row if c and c != "nan"), default=[])
+    raise SeriesNotFoundError(
+        f"Excel: keine Kopfzeile mit Spalte {column_hint!r} gefunden "
+        f"(textreichste Zeile: {[c for c in texts if c and c != 'nan'][:10]})"
+    )
 
 
 def parse_excel_positional(
@@ -263,7 +298,7 @@ class StaticProvider(Provider):
                     else parse_french_dat(text)
                 )
             elif fmt == "excel":
-                table = parse_excel(content, spec.get("sheet", 0), int(spec.get("skiprows", 0)))
+                table = read_excel_grid(content, spec.get("sheet", 0))
             elif fmt == "excel_positional":
                 table = parse_excel_positional(
                     content,
@@ -284,7 +319,10 @@ class StaticProvider(Provider):
             raise ProviderError("static: Symbol muss 'Datensatz:Spalte' sein")
         dataset, column = request.symbol.split(":", 1)
         spec = self._datasets().get(dataset, {})
-        series = pick_column(self._table(dataset), column).dropna()
+        table = self._table(dataset)
+        if str(spec.get("format", "")) == "excel":
+            table = excel_table(table, column)
+        series = pick_column(table, column).dropna()
         value_type = str(spec.get("value_type", "returns"))
         if value_type == "auto":
             value_type = "level_to_returns" if looks_like_level(series) else "percent"

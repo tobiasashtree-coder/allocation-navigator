@@ -136,8 +136,19 @@ def check_dividends(frame: pd.DataFrame, scope: str, years: int = 5) -> list[Fin
     ]
 
 
-def check_staleness(meta: CacheMeta, scope: str, now: datetime) -> list[Finding]:
-    """Aktualität einer Reihe und Hinweis auf einen veralteten Cache-Stand."""
+def check_staleness(
+    meta: CacheMeta,
+    scope: str,
+    now: datetime,
+    frame: pd.DataFrame | None = None,
+    historical: bool = False,
+) -> list[Finding]:
+    """Aktualität einer Reihe und Hinweis auf einen veralteten Cache-Stand.
+
+    Die Altersgrenze richtet sich nach Art und tatsächlichem Abstand der Beobachtungen.
+    Abgeschlossene Reihen (``historical``, z. B. Backfill oder EONIA) werden nicht auf
+    ihr Alter geprüft.
+    """
     findings = []
     if meta.stale:
         findings.append(
@@ -148,8 +159,18 @@ def check_staleness(meta: CacheMeta, scope: str, now: datetime) -> list[Finding]
                 f"Quelle ausgefallen, Stand vom {meta.fetched_at} verwendet ({meta.error[:120]})",
             )
         )
-    age = (pd.Timestamp(now.date()) - pd.Timestamp(meta.last_obs)).days
+    if historical:
+        return findings
     limit = _MAX_AGE_DAYS.get(meta.kind, 60)
+    if frame is not None and len(frame) > 3:
+        spacing = pd.Series(frame["obs_date"]).diff().median().days
+        if spacing > 300:
+            limit = max(limit, 550)
+        elif spacing > 80:
+            limit = max(limit, 250)
+        elif spacing > 20:
+            limit = max(limit, 100)
+    age = (pd.Timestamp(now.date()) - pd.Timestamp(meta.last_obs)).days
     if age > limit:
         findings.append(
             Finding(
@@ -172,9 +193,10 @@ def check_start(
     months = (actual.year - wanted.year) * 12 + actual.month - wanted.month
     if abs(months) <= tolerance_months:
         return []
+    severity: Severity = "Warnung" if abs(months) > 60 else "Hinweis"
     return [
         Finding(
-            "Hinweis",
+            severity,
             scope,
             "Startdatum",
             f"Daten ab {actual.strftime('%Y-%m')}, erwartet {expected} ({months:+d} Monate)",

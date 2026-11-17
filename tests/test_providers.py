@@ -243,17 +243,39 @@ def test_tiingo_needs_key_and_parses_prices(monkeypatch: pytest.MonkeyPatch) -> 
 def test_coinmetrics_follows_pages_and_falls_back_to_second_metric() -> None:
     def answer(url: str, params: dict[str, Any]) -> Any:
         if "page=2" in url:
-            return {"data": [{"asset": "btc", "time": "2024-01-02T00:00:00Z", "PriceUSD": "44000"}]}
-        if params.get("metrics") == "ReferenceRateUSD":
+            return {"data": [{"asset": "btc", "time": "2024-01-02T00:00:00Z", "B": "44000"}]}
+        if params.get("metrics") == "A":
             return HttpError("HTTP 403", status=403, body="not in community")
         return {
-            "data": [{"asset": "btc", "time": "2024-01-01T00:00:00Z", "PriceUSD": "42000.5"}],
+            "data": [{"asset": "btc", "time": "2024-01-01T00:00:00Z", "B": "42000.5"}],
             "next_page_url": "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?page=2",
         }
 
     http = FakeHttp({"timeseries/asset-metrics": answer})
-    frame = CoinMetricsProvider(SourceConfig(), http).fetch_series(SeriesRequest("btc", "price"))
+    cfg = SourceConfig(options={"metrics": ["A", "B"]})
+    frame = CoinMetricsProvider(cfg, http).fetch_series(SeriesRequest("btc", "price"))
     assert list(frame["value"]) == [42000.5, 44000.0]
+
+
+def test_coinmetrics_prefers_metric_with_full_history() -> None:
+    """Im Live-Lauf lieferte die Referenzkurs-Metrik ohne Lizenz nur sieben Tage."""
+    long_dates = pd.date_range("2010-07-18", periods=800, freq="D")
+
+    def answer(url: str, params: dict[str, Any]) -> Any:
+        if params["metrics"] == "ReferenceRateUSD":
+            return {
+                "data": [
+                    {"time": f"2026-11-1{i}T00:00:00Z", "ReferenceRateUSD": "9"} for i in range(7)
+                ]
+            }
+        return {"data": [{"time": d.isoformat(), "PriceUSD": "1.5"} for d in long_dates]}
+
+    http = FakeHttp({"timeseries/asset-metrics": answer})
+    cfg = SourceConfig(options={"metrics": ["ReferenceRateUSD", "PriceUSD"]})
+    frame = CoinMetricsProvider(cfg, http).fetch_series(SeriesRequest("btc", "price"))
+    assert len(frame) == 800 and frame["value"].iloc[0] == 1.5
+    default = CoinMetricsProvider(SourceConfig(), http).fetch_series(SeriesRequest("btc", "price"))
+    assert len(default) == 800 and len(http.calls) == 3  # Standard fragt zuerst PriceUSD
 
 
 def test_paid_providers_refuse_while_disabled(monkeypatch: pytest.MonkeyPatch) -> None:

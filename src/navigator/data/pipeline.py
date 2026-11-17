@@ -72,6 +72,7 @@ class RawSpec:
     lag_days: int = 0
     expected_start: str | None = None
     distributing: bool = False
+    historical: bool = False
 
     def symbol_map(self) -> dict[str, str]:
         """Symbole je Quelle."""
@@ -119,6 +120,7 @@ def collect_specs(config: AppConfig) -> list[RawSpec]:
                         cross_check=kind == "price",
                         expected_start=seg.expected_start,
                         distributing=seg.distributing,
+                        historical=seg.backfill,
                     )
                 )
                 if seg.fallback_symbols:
@@ -132,19 +134,36 @@ def collect_specs(config: AppConfig) -> list[RawSpec]:
                         "yield",
                         seg.yield_symbols,
                         expected_start=seg.expected_start,
+                        historical=seg.backfill,
                     )
                 )
             if seg.cpi_symbols:
                 specs.append(_spec(f"{prefix}.cpi", "macro", seg.cpi_symbols, frequency="M"))
             for i, component in enumerate(seg.components):
-                specs.append(_spec(f"{prefix}.c{i}", "returns", component.symbols))
+                specs.append(
+                    _spec(f"{prefix}.c{i}", "returns", component.symbols, historical=seg.backfill)
+                )
     for key, reference in config.universe.references.items():
         specs.append(_spec(f"reference.{key}", reference.kind, reference.symbols, optional=True))
     for entry in config.currency.fx_series:
-        specs.append(_spec(f"fx.{entry.currency}.{entry.quote}", "fx", entry.symbols))
+        specs.append(
+            _spec(
+                f"fx.{entry.currency}.{entry.quote}",
+                "fx",
+                entry.symbols,
+                historical=entry.quote == "dem_per_usd",
+            )
+        )
     for currency, segments in config.currency.short_rates.items():
-        for segment in segments:
-            specs.append(_spec(f"rate.{currency}.{segment.id}", "rate", segment.symbols))
+        for position, segment in enumerate(segments):
+            specs.append(
+                _spec(
+                    f"rate.{currency}.{segment.id}",
+                    "rate",
+                    segment.symbols,
+                    historical=position > 0,
+                )
+            )
     for key, indicator in config.indicators.indicators.items():
         specs.append(
             _spec(
@@ -387,7 +406,7 @@ def run_validation(
         assert cached is not None
         frame, meta = cached
         scope = f"{spec.key} [{name}]"
-        findings += check_staleness(meta, scope, now)
+        findings += check_staleness(meta, scope, now, frame, spec.historical)
         findings += check_start(spec.expected_start, frame["obs_date"].min(), scope)
         if spec.kind in ("price", "level", "fx", "yield"):
             findings += check_gaps(frame, scope)
@@ -505,25 +524,33 @@ def _synthetic_checks(
 
 
 def _pit_table(config: AppConfig, pit: PitStore) -> pd.DataFrame:
-    rows = []
+    columns = [
+        "Indikator",
+        "Beobachtungen",
+        "von",
+        "bis",
+        "Revisionen",
+        "Anteil Verzögerungsregel",
+        "echte Vintages",
+        "zuletzt bekannt ab",
+    ]
+    rows: list[list[object]] = []
     for key, indicator in config.indicators.indicators.items():
         series = pit.load(f"indicator.{key}")
         if series is None or series.frame.empty:
-            rows.append({"Indikator": key, "Beobachtungen": 0})
+            rows.append([key, 0, "", "", 0, "", "", ""])
             continue
         frame = series.frame
         rows.append(
-            {
-                "Indikator": key,
-                "Beobachtungen": int(frame["obs_date"].nunique()),
-                "von": str(frame["obs_date"].min().date()),
-                "bis": str(frame["obs_date"].max().date()),
-                "Revisionen": series.revision_count(),
-                "Anteil Verzögerungsregel": float(frame["approx"].mean()),
-                "echte Vintages": "ja"
-                if indicator.vintages and not frame["approx"].all()
-                else "nein",
-                "zuletzt bekannt ab": str(frame["known_from"].max().date()),
-            }
+            [
+                key,
+                int(frame["obs_date"].nunique()),
+                str(frame["obs_date"].min().date()),
+                str(frame["obs_date"].max().date()),
+                series.revision_count(),
+                f"{frame['approx'].mean():.0%}",
+                "ja" if indicator.vintages and not frame["approx"].all() else "nein",
+                str(frame["known_from"].max().date()),
+            ]
         )
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=columns, dtype=object)
