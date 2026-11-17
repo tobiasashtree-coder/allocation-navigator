@@ -176,6 +176,11 @@ def run_recommendation(
     hist, counts = historical_regime_returns(excess, regimes[regimes.index <= asof])
     target = assumption_returns(config, assets)
     table, shrink = james_stein(hist, counts, target, excess.var())
+    # Bitcoin: kurze Historie, starke Schrumpfung zur Annahme (base.yaml, E-75)
+    btc_weight = float(config.base.black_litterman.get("bitcoin_prior_weight", 0.8))
+    if "bitcoin" in table.index:
+        hist_btc = table.loc["bitcoin"] - target.loc["bitcoin"]
+        table.loc["bitcoin"] = target.loc["bitcoin"] + (1 - btc_weight) * hist_btc
     conv_series = conviction[conviction.index <= asof].dropna()
     conv = float(conv_series.iloc[-1]) if not conv_series.empty else 0.0
     notes: list[str] = []

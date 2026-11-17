@@ -9,8 +9,8 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 - Fertig: **M0**, **M1**, **M2** (Methode A), **M3** (Methode B und Vergleich; Prüfpunkt
   freigegeben am 17.11.2026 mit Variante 2, Marktmerkmale als Veränderung).
 - Fertig: **M4** (Schuldenzyklus-Overlay, `docs/checkpoints/M4.md`).
-- Nächster Schritt: **M5** (Empfehlungs-Engine), erst nach Freigabe durch Tobias. Danach M6
-  und Prüfpunkt nach M6.
+- Fertig: **M5** (Empfehlungs-Engine, `docs/checkpoints/M5.md`, `navigator recommend`).
+- Nächster Schritt: **M6** (Backtest), danach Prüfpunkt nach M6.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.
@@ -83,3 +83,6 @@ uv run navigator data update --demo && uv run navigator data validate --demo   #
 | `features/debt_stress.py` | Langfristiger Schuldenzyklus: Score 0–100, Perzentile, Phasen, Kalibrierung |
 | `allocation/overlay.py` | Overlay-Vektoren mit λ je Phase, vorläufige Basis bis M5 |
 | `reporting/debt.py` | Bericht Schuldenzyklus (`navigator debt run`) |
+| `allocation/base.py` | Risikoparitäts-Basis (Ledoit-Wolf, ERC je Korb und zwischen Körben) |
+| `allocation/engine.py` | Regime-Renditen (James-Stein), Black-Litterman, Ampel, Tilts, Zielgewichte, Zerlegung |
+| `allocation/recommend.py` | Empfehlung je Variante, Währungssicht, Bericht (`navigator recommend`) |
