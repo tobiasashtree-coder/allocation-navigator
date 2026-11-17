@@ -49,7 +49,6 @@ RootOption = Annotated[
 ]
 
 LATER = {
-    "backtest": "M6",
     "report": "M6/M8",
     "dashboard": "M7",
     "monthly": "M8",
@@ -372,9 +371,31 @@ def recommend(
 
 
 @app.command()
-def backtest() -> None:
-    """Walk-Forward-Backtest mit Vergleichsstrategien (folgt in M6)."""
-    _not_yet("backtest")
+def backtest(
+    asof: Annotated[str | None, typer.Option("--asof", help="Ende JJJJ-MM-TT")] = None,
+    placebo: Annotated[
+        int | None, typer.Option("--placebo", help="Placebo-Folgen (Standard 1000)")
+    ] = None,
+    simulations: Annotated[
+        int | None, typer.Option("--simulations", help="Resampling je Entscheidung")
+    ] = None,
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Backtest aller Vergleichsstrategien; Bericht reports/backtest_latest.html."""
+    import pandas as pd
+
+    from navigator.backtest.run import load_inputs, run_backtest, write_report
+
+    config, paths = _setup(root, demo)
+    end = pd.Timestamp(asof) if asof else pd.Timestamp.today().normalize() - pd.offsets.MonthEnd(1)
+    inputs = load_inputs(config, paths, end)
+    result = run_backtest(config, inputs, placebo, simulations)
+    md, page = write_report(config, paths, result)
+    typer.echo(f"Placebo-p-Wert {result.placebo_p:.3f} · Deflated Sharpe {result.deflated:.3f}")
+    typer.echo(f"Bericht: {md}; HTML: {page}")
+    if paths.demo:
+        typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte oder Strategien.")
 
 
 @app.command()

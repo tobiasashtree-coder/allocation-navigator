@@ -55,8 +55,10 @@ def covariance(returns: pd.DataFrame, config: AppConfig) -> tuple[pd.DataFrame, 
     cov = config.base.covariance
     window = int(cov.get("window_months", 60))
     halflife = float(cov.get("halflife_months", 30))
-    recent = returns.dropna().iloc[-window:]
-    if len(recent) < 24:
+    recent = returns.iloc[-window:]
+    # Nur Klassen mit lückenlosem Fenster (im Backtest fehlen frühe Klassen, z. B. Bitcoin).
+    recent = recent.loc[:, recent.notna().all()].dropna()
+    if len(recent) < 24 or recent.shape[1] < 2:
         raise ValueError(f"zu wenige vollständige Monate für die Kovarianz ({len(recent)})")
     age = np.arange(len(recent))[::-1]
     weights = 0.5 ** (age / halflife)

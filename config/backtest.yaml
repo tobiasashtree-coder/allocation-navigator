@@ -17,7 +17,8 @@ rebalancing:
   analysis: monthly
   frequency: quarterly
   no_trade_band_pp: 2.0
-  execution: first_trading_day_close_t_plus_1
+  execution: first_trading_day_close_t_plus_1   # mit Monatsdaten: Rendite ab dem Folgemonat
+  resampling_simulations: 30         # Resampling je Entscheidung (statt 500, Laufzeit; E-81)
 
 # Transaktionskosten je Klasse in Basispunkten (einfacher Weg).
 costs_bps:
