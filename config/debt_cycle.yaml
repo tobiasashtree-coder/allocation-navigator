@@ -140,8 +140,10 @@ score:
     # ---------------------------------------------------------- BIS
     credit_gap: {source: bis, symbol: "WS_CREDIT_GAP/Q.{iso2}.P.A.C", frequency: Q, aggregate: last, publication_lag: {months: 6}}
     dsr: {source: bis, symbol: "WS_DSR/Q.{iso2}.P", frequency: Q, publication_lag: {months: 6}}
-    eer_broad: {source: bis, symbol: "WS_EER/M.N.B.{iso2}", frequency: M, publication_lag: {months: 1}}
-    eer_narrow: {source: bis, symbol: "WS_EER/M.N.N.{iso2}", frequency: M, publication_lag: {months: 1}}
+    # Effektive Wechselkurse der BIS über FRED (Abruf direkt bei der BIS lieferte für alle
+    # Länder dieselbe Reihe, E-66).
+    eer_broad: {source: fred, symbol: "NB{iso2}BIS", frequency: M, publication_lag: {months: 1}}
+    eer_narrow: {source: fred, symbol: "NN{iso2}BIS", frequency: M, publication_lag: {months: 1}}
     # ---------------------------------------------------------- weltweit
     gold_reserve_share:
       source: static
