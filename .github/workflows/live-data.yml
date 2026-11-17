@@ -26,6 +26,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --all-groups
+      - name: Datencache wiederherstellen
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: live-data-${{ github.run_id }}
+          restore-keys: live-data-
       - name: Quellen pruefen (Ticker, Reihen-IDs, Startdaten)
         run: uv run navigator data sources --probe | tee sources.log
         continue-on-error: true
