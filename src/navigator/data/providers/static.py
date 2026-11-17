@@ -159,6 +159,50 @@ def excel_table(grid: pd.DataFrame, column_hint: str, search_rows: int = 80) -> 
     )
 
 
+def parse_nyfed_realtime(content: bytes) -> pd.DataFrame:
+    """Echtzeit-Schätzungen der NY Fed: ein Blatt je Datenstand.
+
+    Je Blatt zählt die jüngste einseitige Schätzung (erste Spalte ``rstar``, links von den
+    zweiseitigen Schätzungen). Für die Zeit vor dem ersten Datenstand dienen dessen
+    einseitige Schätzungen als Näherung. Liefert eine Spalte ``rstar`` je Quartalsende.
+    """
+    sheets = pd.read_excel(io.BytesIO(content), sheet_name=None, header=None)
+    history: pd.Series | None = None
+    latest: dict[pd.Timestamp, float] = {}
+    for name, grid in sheets.items():
+        header_row = None
+        for i in range(min(40, len(grid))):
+            cells = [str(v).strip().lower() for v in grid.iloc[i]]
+            if "date" in cells and "rstar" in cells:
+                header_row = i
+                break
+        if header_row is None:
+            continue
+        cells = [str(v).strip().lower() for v in grid.iloc[header_row]]
+        date_col, value_col = cells.index("date"), cells.index("rstar")
+        body = grid.iloc[header_row + 1 :, [date_col, value_col]].copy()
+        body.columns = ["date", "rstar"]
+        body["date"] = pd.to_datetime(body["date"], errors="coerce")
+        body["rstar"] = pd.to_numeric(body["rstar"], errors="coerce")
+        body = body.dropna()
+        if body.empty:
+            continue
+        series = pd.Series(
+            body["rstar"].to_numpy(),
+            index=pd.DatetimeIndex(body["date"]) + pd.offsets.QuarterEnd(0),
+        )
+        if history is None:
+            history = series
+        latest[series.index[-1]] = float(series.iloc[-1])
+        log.debug("NY-Fed-Blatt %s: jüngste Schätzung %s", name, series.index[-1].date())
+    if history is None:
+        raise SeriesNotFoundError("NY-Fed-Datei: kein Blatt mit Spalten 'Date' und 'rstar'")
+    combined = history.copy()
+    for stamp, value in latest.items():
+        combined.loc[stamp] = value
+    return pd.DataFrame({"rstar": combined.sort_index()})
+
+
 def parse_excel_positional(
     content: bytes, sheet: Any, skiprows: int, columns: dict[str, int]
 ) -> pd.DataFrame:
@@ -303,6 +347,8 @@ class StaticProvider(Provider):
                 )
             elif fmt == "excel":
                 table = read_excel_grid(content, spec.get("sheet", 0))
+            elif fmt == "nyfed_realtime":
+                table = parse_nyfed_realtime(content)
             elif fmt == "excel_positional":
                 table = parse_excel_positional(
                     content,

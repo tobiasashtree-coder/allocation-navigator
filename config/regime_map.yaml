@@ -17,6 +17,40 @@ rules:
   confirm_months: 2        # Wechsel zählt nach zwei Monaten Führung in Folge ...
   switch_probability: 0.60 # ... oder sofort ab 60 % Wahrscheinlichkeit
 
+# Kurzfristiger Schuldenzyklus (Abschnitt 4.3). Prozentpunkte; Prüfreihenfolge:
+# Kontraktion vor später Expansion vor früher Expansion, sonst mittlere Expansion.
+#   Kontraktion: Kreditspread 6 Monate +0,50 Pp. weiter UND (Leitzins 6 Monate −0,25 Pp.
+#                ODER Kreditimpuls negativ)
+#   Spät:        realer Leitzins über neutralem Zins UND Zinskurve unter 0,50 Pp. UND
+#                Spread unter seinem 10-Jahres-Median
+#   Früh:        (Leitzins 12 Monate −0,50 Pp. ODER realer Abstand unter −1 Pp. bei
+#                Zinskurve über 1,50 Pp.) UND Spread 6 Monate nicht weiter
+# Entwurf vom 17.11.2026; vor M6 festzuschreiben.
+credit_cycle:
+  contraction_spread_widening: 0.50
+  contraction_policy_cut: 0.25
+  late_real_gap_min: 0.0
+  late_curve_max: 0.50
+  early_policy_cut_12m: 0.50
+  early_real_gap_max: -1.0
+  early_curve_min: 1.50
+  credit_trend_years: 5
+  confirm_months: 2
+  neutral_rstar_fallback: rolling_real_rate_10y   # wenn keine r*-Schätzung bekannt ist
+
+# Bekannte Episoden für den Plausibilitätscheck (Abnahme M2). "expected" nennt die
+# Quadranten, die ökonomisch plausibel sind; geprüft wird, welcher Anteil der Monate darauf
+# entfällt. Die Episoden dienen nur der Kontrolle, nie der Kalibrierung.
+episodes:
+  - {name: "Ölkrise und Stagflation", start: "1973-11", end: "1975-03", expected: [stagflation]}
+  - {name: "Zweite Ölkrise", start: "1979-03", end: "1980-06", expected: [stagflation, reflation]}
+  - {name: "Volcker-Rezession", start: "1981-08", end: "1982-11", expected: [deflationary_bust]}
+  - {name: "Aufschwung der 1990er", start: "1995-01", end: "1997-12", expected: [disinflationary_boom, reflation]}
+  - {name: "Platzen der Dotcom-Blase", start: "2001-03", end: "2001-11", expected: [deflationary_bust]}
+  - {name: "Finanzkrise", start: "2008-09", end: "2009-06", expected: [deflationary_bust]}
+  - {name: "Pandemie-Schock", start: "2020-03", end: "2020-05", expected: [deflationary_bust]}
+  - {name: "Inflationsschub", start: "2021-04", end: "2022-06", expected: [reflation, stagflation]}
+
 quadrants:
   disinflationary_boom: Disinflationärer Aufschwung (Wachstum steigt, Inflation fällt)
   reflation: Reflation / Überhitzung (Wachstum steigt, Inflation steigt)

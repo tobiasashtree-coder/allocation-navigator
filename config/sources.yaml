@@ -207,10 +207,11 @@ sources:
           note: "Weltbank (Pink Sheet), Monatsdurchschnitte der Rohstoffpreise ab 1960, frei verfügbar"
         lw_realtime:
           url: https://www.newyorkfed.org/medialibrary/media/research/economists/williams/data/Laubach_Williams_real_time_estimates.xlsx
-          format: excel
-          sheet: 0
+          format: nyfed_realtime
           value_type: level
-          note: Echtzeit-Schätzungen des neutralen Zinses (NY Fed); Layout am Prüfpunkt M2 prüfen.
+          note: >-
+            Ein Blatt je Datenstand ab 2005q1; je Blatt zählt die jüngste einseitige Schätzung.
+            Vor 2005 die einseitigen Schätzungen des ersten Datenstands (Näherung).
         hlw_current:
           url: https://www.newyorkfed.org/medialibrary/media/research/economists/williams/data/Holston_Laubach_Williams_current_estimates.xlsx
           format: excel

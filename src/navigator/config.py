@@ -255,7 +255,8 @@ class Indicator(StrictModel):
     name: str
     region: str
     axis: Literal["growth", "inflation", "credit_cycle", "debt_cycle", "market"]
-    symbols: dict[str, str]
+    symbols: dict[str, str] = Field(default_factory=dict)
+    derived_from: list[str] = Field(default_factory=list)
     frequency: Literal["D", "M", "Q", "A"] = "M"
     vintages: bool = False
     publication_lag: PublicationLag = Field(default_factory=PublicationLag)
@@ -263,6 +264,14 @@ class Indicator(StrictModel):
     invert: bool = False
     verified: bool = False
     note: str = ""
+
+    @model_validator(mode="after")
+    def _check(self) -> Indicator:
+        if bool(self.symbols) == bool(self.derived_from):
+            raise ValueError(f"{self.name}: entweder 'symbols' oder 'derived_from' angeben")
+        if self.derived_from and len(self.derived_from) != 2:
+            raise ValueError(f"{self.name}: 'derived_from' braucht genau zwei Indikatoren (a − b)")
+        return self
 
 
 class IndicatorDefaults(StrictModel):
@@ -294,12 +303,39 @@ class RegimeRules(StrictModel):
     switch_probability: float = 0.60
 
 
+class CreditCycleRules(StrictModel):
+    """Schwellen des kurzfristigen Schuldenzyklus (Abschnitt 4.3), alle in Prozentpunkten."""
+
+    contraction_spread_widening: float = 0.50
+    contraction_policy_cut: float = 0.25
+    late_real_gap_min: float = 0.0
+    late_curve_max: float = 0.50
+    early_policy_cut_12m: float = 0.50
+    early_real_gap_max: float = -1.0
+    early_curve_min: float = 1.50
+    credit_trend_years: int = 5
+    confirm_months: int = 2
+    neutral_rstar_fallback: str = "rolling_real_rate_10y"
+
+
+class Episode(StrictModel):
+    """Bekannte Episode für den Plausibilitätscheck (Abnahme M2)."""
+
+    name: str
+    start: str
+    end: str
+    expected: list[str]
+    note: str = ""
+
+
 class RegimeMapConfig(StrictModel):
     """Inhalt von ``regime_map.yaml``: Erwartungsvektoren je Klasse und Quadrant."""
 
     status: str = "Entwurf"
     scale_note: str = ""
     rules: RegimeRules = Field(default_factory=RegimeRules)
+    credit_cycle: CreditCycleRules = Field(default_factory=CreditCycleRules)
+    episodes: list[Episode] = Field(default_factory=list)
     quadrants: dict[str, str]
     expectations: dict[str, dict[str, float]]
 
@@ -374,6 +410,11 @@ class AppConfig(StrictModel):
                 raise ValueError(f"base.yaml, Korb {basket}: unbekannte Klassen {sorted(bad)}")
         known_sources = set(self.sources.sources)
         for key, indicator in self.indicators.indicators.items():
+            unknown = set(indicator.derived_from) - set(self.indicators.indicators)
+            if unknown:
+                raise ValueError(
+                    f"indicators.yaml, {key}: unbekannte Indikatoren {sorted(unknown)}"
+                )
             bad_ind = {source_base(n) for n in indicator.symbols} - known_sources
             if bad_ind:
                 raise ValueError(f"indicators.yaml, {key}: unbekannte Quellen {sorted(bad_ind)}")

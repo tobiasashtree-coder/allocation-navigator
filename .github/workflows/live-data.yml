@@ -35,17 +35,14 @@ jobs:
       - name: Validieren
         run: uv run navigator data validate | tee validate.log
         continue-on-error: true
-      - name: Statische Datensätze ansehen (Diagnose)
-        run: |
-          for d in lw_realtime hlw_current; do
-            echo "### $d"; uv run navigator data inspect "$d" --rows 16 || true
-          done | tee inspect.log
+      - name: Regime nach Methode A
+        run: uv run navigator regime run --method a | tee regime.log
         continue-on-error: true
       - name: Bericht in die Zusammenfassung schreiben
         if: always()
         shell: bash
         run: |
-          for f in reports/validation_latest.md reports/sources_latest.md; do
+          for f in reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
             if [ -f "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
           done
       - uses: actions/upload-artifact@v4

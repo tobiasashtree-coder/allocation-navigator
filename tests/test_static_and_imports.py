@@ -333,3 +333,36 @@ def test_geltner_unsmoothing_restores_volatility() -> None:
     assert restored.std() == pytest.approx(true.iloc[1:].std(), rel=1e-6)
     assert smoothed.std() < 0.7 * true.std()
     assert geltner_unsmooth(smoothed).std() > 1.5 * smoothed.std()
+
+
+def test_nyfed_realtime_takes_latest_one_sided_estimate_per_vintage(tmp_path: Path) -> None:
+    def sheet(rows: list[tuple[str, float, float]]) -> pd.DataFrame:
+        head = [
+            ["This spreadsheet", None, None, None],
+            [None, "One-Sided", None, "Two-Sided"],
+            ["Date", "Real GDP", "rstar", "rstar"],
+        ]
+        return pd.DataFrame(head + [[d, 1.0, r1, r2] for d, r1, r2 in rows])
+
+    path = tmp_path / "manual" / "lw_realtime.xlsx"
+    path.parent.mkdir()
+    with pd.ExcelWriter(path) as writer:
+        sheet([("2004-09-30", 2.0, 9.0), ("2004-12-31", 2.2, 9.0)]).to_excel(
+            writer, sheet_name="2005q1", header=False, index=False
+        )
+        sheet(
+            [("2004-09-30", 2.5, 9.0), ("2004-12-31", 2.6, 9.0), ("2005-03-31", 2.4, 9.0)]
+        ).to_excel(writer, sheet_name="2005q2", header=False, index=False)
+    cfg = SourceConfig(
+        options={"datasets": {"lw_realtime": {"format": "nyfed_realtime", "value_type": "level"}}}
+    )
+    frame = StaticProvider(cfg, FakeHttp({}), tmp_path).fetch_series(
+        SeriesRequest("lw_realtime:rstar", "level")
+    )
+    # 2004q3 aus dem ersten Datenstand, danach je Datenstand die jüngste einseitige Schätzung
+    assert list(frame["value"]) == [2.0, 2.2, 2.4]
+    assert list(frame["obs_date"].dt.strftime("%Y-%m-%d")) == [
+        "2004-09-30",
+        "2004-12-31",
+        "2005-03-31",
+    ]

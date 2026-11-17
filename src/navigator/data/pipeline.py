@@ -166,6 +166,8 @@ def collect_specs(config: AppConfig) -> list[RawSpec]:
                 )
             )
     for key, indicator in config.indicators.indicators.items():
+        if not indicator.symbols:
+            continue  # abgeleitete Indikatoren entstehen erst in den Merkmalen
         specs.append(
             _spec(
                 f"indicator.{key}",

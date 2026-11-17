@@ -48,7 +48,7 @@ indicators:
     axis: growth
     symbols: {fred: T10Y3M}
     frequency: D
-    change: level
+    change: diff
   us_credit_spread:
     name: Kreditspread USA (Moody's Baa minus 10J.-Treasury, invertiert)
     region: US
@@ -136,8 +136,6 @@ indicators:
     axis: growth
     symbols:
       ecb: "LFSI/M.I9.S.UNEHRT.TOTAL0.15_74.T"
-      eurostat: "une_rt_m/M.SA.TOTAL.PC_ACT.T.EA20"
-      "eurostat#2": "une_rt_m/M.SA.Y15-74.PC_ACT.T.EA20"
     publication_lag: {months: 2}
     change: diff
     invert: true
@@ -147,6 +145,12 @@ indicators:
     axis: market
     symbols: {ecb: "FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA"}
     change: level
+  ea_curve_10y3m:
+    name: Zinskurve Eurozone (10J.-Bund minus Euribor 3M)
+    region: EA
+    axis: growth
+    derived_from: [ea_bund_10y, ea_euribor_3m]
+    change: diff
   ea_retail:
     name: Reale Einzelhandelsumsätze Eurozone
     region: EA
@@ -160,12 +164,16 @@ indicators:
     region: EA
     axis: inflation
     symbols:
-      ecb: "ICP/M.U2.Y.XEF000.3.INX"
-      "ecb#2": "ICP/M.U2.N.XEF000.4.INX"
-      eurostat: "prc_hicp_midx/M.I15.TOT_X_NRG_FOOD.EA"
-      "eurostat#2": "prc_hicp_midx/M.I25.TOT_X_NRG_FOOD.EA"
+      eurostat: "prc_hicp_minr/M.I25.TOT_X_NRG_FOOD.EA"
+      "eurostat#2": "prc_hicp_minr/M.I25.TOT_X_NRG_FOOD.EA21"
+      ecb: "HICP/M.U2.N.XEF000.4D0.INX"
+      "ecb#2": "HICP/M.U2.N.TOT_X_NRG_FOOD.4D0.INX"
+      "ecb#3": "ICP/M.U2.N.XEF000.4.INX"
     publication_lag: {months: 1}
     change: core_momentum
+    note: >-
+      Die EZB hat ICP am 04.02.2026 eingestellt (neuer Datensatz HICP); Eurostat veröffentlicht
+      seit 2026 unter prc_hicp_minr mit Basis 2025=100 und EA21. ecb#3 (alt) endet 12/2025.
   ea_ppi:
     name: Erzeugerpreise Eurozone
     region: EA

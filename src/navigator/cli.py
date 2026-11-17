@@ -29,6 +29,10 @@ infra_app = typer.Typer(
 config_app = typer.Typer(help="Konfiguration prüfen.", no_args_is_help=True)
 app.add_typer(data_app, name="data")
 app.add_typer(config_app, name="config")
+regime_app = typer.Typer(
+    help="Regime-Erkennung (Methode A; Methode B folgt in M3).", no_args_is_help=True
+)
+app.add_typer(regime_app, name="regime")
 data_app.add_typer(infra_app, name="infra")
 
 DemoOption = Annotated[
@@ -43,7 +47,6 @@ RootOption = Annotated[
 ]
 
 LATER = {
-    "regime": "M2/M3",
     "recommend": "M5",
     "backtest": "M6",
     "report": "M6/M8",
@@ -276,10 +279,34 @@ def _not_yet(name: str) -> None:
     raise typer.Exit(code=2)
 
 
-@app.command()
-def regime() -> None:
-    """Regime-Erkennung nach Methode A, B oder beiden (folgt in M2/M3)."""
-    _not_yet("regime")
+@regime_app.command("run")
+def regime_run(
+    method: Annotated[str, typer.Option("--method", help="a, b oder both")] = "a",
+    asof: Annotated[
+        str | None, typer.Option("--asof", help="Stichtag JJJJ-MM-TT (Standard: heute)")
+    ] = None,
+    start: Annotated[str, typer.Option("--start", help="Beginn der Historie")] = "1960-01",
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Bestimmt das Regime je Monat und schreibt den Bericht nach reports/regime_a_latest.md."""
+    import pandas as pd
+
+    from navigator.regimes.method_a import current_state, load_and_run, write_report
+
+    if method not in ("a", "both"):
+        typer.echo("Methode B folgt in Meilenstein M3; verfügbar ist --method a.")
+        raise typer.Exit(code=2)
+    config, paths = _setup(root, demo)
+    stamp = pd.Timestamp(asof) if asof else None
+    result = load_and_run(config, paths, start, stamp)
+    md_path, csv_path = write_report(config, paths, result, None)
+    for key, value in current_state(result).items():
+        shown = f"{value:+.2f}" if isinstance(value, float) else value
+        typer.echo(f"{key:<22} {shown}")
+    typer.echo(f"Bericht: {md_path}; Historie: {csv_path}")
+    if demo:
+        typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
 
 
 @app.command()
