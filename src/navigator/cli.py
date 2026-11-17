@@ -29,9 +29,7 @@ infra_app = typer.Typer(
 config_app = typer.Typer(help="Konfiguration prüfen.", no_args_is_help=True)
 app.add_typer(data_app, name="data")
 app.add_typer(config_app, name="config")
-regime_app = typer.Typer(
-    help="Regime-Erkennung (Methode A; Methode B folgt in M3).", no_args_is_help=True
-)
+regime_app = typer.Typer(help="Regime-Erkennung nach Methode A und B.", no_args_is_help=True)
 app.add_typer(regime_app, name="regime")
 data_app.add_typer(infra_app, name="infra")
 
@@ -294,8 +292,8 @@ def regime_run(
 
     from navigator.regimes.method_a import current_state, load_and_run, write_report
 
-    if method not in ("a", "both"):
-        typer.echo("Methode B folgt in Meilenstein M3; verfügbar ist --method a.")
+    if method not in ("a", "b", "both"):
+        typer.echo("--method muss a, b oder both sein.")
         raise typer.Exit(code=2)
     config, paths = _setup(root, demo)
     stamp = pd.Timestamp(asof) if asof else None
@@ -304,7 +302,20 @@ def regime_run(
     for key, value in current_state(result).items():
         shown = f"{value:+.2f}" if isinstance(value, float) else value
         typer.echo(f"{key:<22} {shown}")
-    typer.echo(f"Bericht: {md_path}; Historie: {csv_path}")
+    typer.echo(f"Bericht A: {md_path}; Historie: {csv_path}")
+    if method in ("b", "both"):
+        from navigator.data.pit import PitStore
+        from navigator.regimes import method_b
+
+        cmp = method_b.run_comparison(config, PitStore(paths.pit), result.dates, result)
+        md_b, csv_b = method_b.write_report(config, paths, cmp)
+        when = cmp.b.regime.last_valid_index()
+        if when is not None:
+            typer.echo(f"Methode B             {method_b.STATE_LABELS[cmp.b.label[when]]}")
+            typer.echo(f"Überzeugung           {cmp.conviction[when]:.2f}")
+            typer.echo(f"Begründung            {cmp.explanations.get(when, '')}")
+        typer.echo(f"Übereinstimmung A/B   {cmp.agreement_rate:.0%}")
+        typer.echo(f"Bericht B: {md_b}; Historie: {csv_b}")
     if demo:
         typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
 

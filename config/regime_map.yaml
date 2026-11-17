@@ -37,6 +37,42 @@ credit_cycle:
   confirm_months: 2
   neutral_rstar_fallback: rolling_real_rate_10y   # wenn keine r*-Schätzung bekannt ist
 
+# Methode B (Abschnitt 5): Hidden-Markov-Modell mit gaußschen Verteilungen (diagonal).
+# Merkmale: die Rohindikatoren aus 4.1 ohne Handgewichtung (USA, als Point-in-Time-z-Werte)
+# und vier Marktmerkmale. Fehlende Werte gelten als 0 (= Durchschnitt), solange mindestens
+# min_feature_share der Merkmale vorliegt. Neuschätzung mit expandierendem Fenster einmal je
+# Jahr (nach dem Monatsende von refit_month), dazwischen monatlich gefiltert.
+hmm:
+  n_states: 4
+  bic_states: [3, 4, 5, 6]
+  covariance: diag
+  n_starts: 5
+  max_iter: 300
+  tol: 0.0001
+  seed: 20261117
+  min_train_months: 120
+  refit_month: 12
+  start: "1965-01"
+  indicator_features:
+    - us_cli
+    - us_indpro
+    - us_unrate
+    - us_curve_10y3m
+    - us_credit_spread
+    - us_real_retail
+    - us_core_cpi
+    - us_breakeven_5y5y
+    - us_wages
+    - us_ppi
+    - commodity_prices
+  market_features:
+    - stock_bond_corr_12m
+    - equity_vol_3m
+    - real_yield_change_6m
+    - credit_spread_level
+  min_feature_share: 0.5
+  stress_threshold: 0.75     # Zustand ohne passenden Quadranten mit hohem Stress heißt "Finanzstress"
+
 # Bekannte Episoden für den Plausibilitätscheck (Abnahme M2). "expected" nennt die
 # Quadranten, die ökonomisch plausibel sind; geprüft wird, welcher Anteil der Monate darauf
 # entfällt. Die Episoden dienen nur der Kontrolle, nie der Kalibrierung.

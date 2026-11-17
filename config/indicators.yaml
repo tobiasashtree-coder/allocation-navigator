@@ -253,6 +253,20 @@ indicators:
     axis: credit_cycle
     symbols: {fred: BAA10YM}
     change: level
+  us_equity_price:
+    name: S&P 500 (Kursindex, für Marktmerkmale der Methode B)
+    region: US
+    axis: market
+    symbols: {yfinance: "^GSPC"}
+    frequency: D
+    change: level
+  us_dgs10:
+    name: Rendite 10J.-Treasury, täglich (für Marktmerkmale der Methode B)
+    region: US
+    axis: market
+    symbols: {fred: DGS10}
+    frequency: D
+    change: level
   us_policy_rate:
     name: Leitzins USA (effektive Fed Funds Rate)
     region: US

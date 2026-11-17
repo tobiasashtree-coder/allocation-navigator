@@ -318,6 +318,25 @@ class CreditCycleRules(StrictModel):
     neutral_rstar_fallback: str = "rolling_real_rate_10y"
 
 
+class HmmConfig(StrictModel):
+    """Parameter der Methode B (Abschnitt 5.1)."""
+
+    n_states: int = 4
+    bic_states: list[int] = Field(default_factory=lambda: [3, 4, 5, 6])
+    covariance: Literal["diag"] = "diag"
+    n_starts: int = 5
+    max_iter: int = 300
+    tol: float = 1e-4
+    seed: int = 20261117
+    min_train_months: int = 120
+    refit_month: int = 12
+    start: str = "1965-01"
+    indicator_features: list[str] = Field(default_factory=list)
+    market_features: list[str] = Field(default_factory=list)
+    min_feature_share: float = 0.5
+    stress_threshold: float = 0.75
+
+
 class Episode(StrictModel):
     """Bekannte Episode für den Plausibilitätscheck (Abnahme M2)."""
 
@@ -335,6 +354,7 @@ class RegimeMapConfig(StrictModel):
     scale_note: str = ""
     rules: RegimeRules = Field(default_factory=RegimeRules)
     credit_cycle: CreditCycleRules = Field(default_factory=CreditCycleRules)
+    hmm: HmmConfig = Field(default_factory=HmmConfig)
     episodes: list[Episode] = Field(default_factory=list)
     quadrants: dict[str, str]
     expectations: dict[str, dict[str, float]]
