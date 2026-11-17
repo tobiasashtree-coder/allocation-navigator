@@ -23,6 +23,7 @@ dependencies = [
     "hmmlearn>=0.3",
     "scikit-learn>=1.4",
     "scipy>=1.11",
+    "cvxpy>=1.9.3",
 ]
 
 [project.scripts]

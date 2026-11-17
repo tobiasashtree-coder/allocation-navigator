@@ -49,7 +49,6 @@ RootOption = Annotated[
 ]
 
 LATER = {
-    "recommend": "M5",
     "backtest": "M6",
     "report": "M6/M8",
     "dashboard": "M7",
@@ -325,9 +324,51 @@ def regime_run(
 
 
 @app.command()
-def recommend() -> None:
-    """Empfehlungen in drei Formen, mit und ohne Overlay (folgt in M5)."""
-    _not_yet("recommend")
+def recommend(
+    asof: Annotated[
+        str | None,
+        typer.Option("--asof", help="Stichtag JJJJ-MM-TT (Standard: letztes Monatsende)"),
+    ] = None,
+    overlay: Annotated[
+        bool, typer.Option("--overlay/--no-overlay", help="Schuldenzyklus-Overlay einbeziehen")
+    ] = True,
+    portfolio: Annotated[
+        Path | None, typer.Option("--portfolio", help="CSV mit Spalten asset,weight (aktuell)")
+    ] = None,
+    simulations: Annotated[
+        int | None, typer.Option("--simulations", help="Resampling-Simulationen (Standard 500)")
+    ] = None,
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Empfehlungen in drei Formen (Ampel, Tilts, Zielgewichte), mit und ohne Overlay."""
+    import pandas as pd
+
+    from navigator.allocation.recommend import load_and_recommend, write_report
+
+    config, paths = _setup(root, demo)
+    current = None
+    if portfolio is not None:
+        frame = pd.read_csv(portfolio)
+        current = frame.set_index("asset")["weight"].astype(float)
+        current = current / current.sum()
+    stamp = pd.Timestamp(asof) if asof else None
+    rec = load_and_recommend(config, paths, stamp, overlay, current, simulations)
+    md, csv = write_report(config, paths, rec)
+    key = "ab+overlay" if "ab+overlay" in rec.variants else next(iter(rec.variants))
+    variant = rec.variants[key]
+    for asset, weight in variant.target.weights.sort_values(ascending=False).items():
+        typer.echo(
+            f"{asset:<24} Ziel {weight:6.1%}  Basis {rec.base.weights.get(asset, 0.0):6.1%}  "
+            f"Ampel {variant.lights[asset]}"
+        )
+    failed = [k for k, v in variant.target.checks.items() if not v]
+    typer.echo(
+        "Restriktionen: " + ("alle eingehalten" if not failed else "VERLETZT: " + ", ".join(failed))
+    )
+    typer.echo(f"Bericht: {md}; Zielgewichte: {csv}")
+    if paths.demo:
+        typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
 
 
 @app.command()
