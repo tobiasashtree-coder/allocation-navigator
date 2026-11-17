@@ -6,9 +6,13 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 
 ## Stand
 
-- Fertig: **M0** (Grundgerüst) und **M1** (Datenschicht), offline getestet.
-- Offen: Prüfpunkt M1 (erster Lauf mit echten Daten, siehe `docs/checkpoints/M1.md`).
+- Fertig: **M0** (Grundgerüst) und **M1** (Datenschicht). Lauf mit echten Daten am 17.11.2026:
+  18/18 Klassen in EUR, USD, CHF, GBP (ohne API-Keys, also ohne ALFRED-Vintages und Tiingo).
+- Offen: **Freigabe am Prüfpunkt M1** samt fünf Fragen an den Nutzer, siehe
+  `docs/checkpoints/M1.md`. Vor der Freigabe nicht mit M2 beginnen.
 - Danach: M2 bis M8 laut `docs/SPEC.md`, Abschnitt 10.
+- Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
+  die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht.
 
 ## Arbeitsweise
 

@@ -4,7 +4,8 @@ Strategisches Asset-Allocation-Tool nach Ray Dalios Zyklenlogik: Es bestimmt mon
 makroökonomische Regime und leitet daraus Empfehlungen für 18 Assetklassen ab. Basiswährung
 EUR, umstellbar auf USD, CHF, GBP. Spezifikation: [`docs/SPEC.md`](docs/SPEC.md).
 
-**Stand:** M0 (Grundgerüst) und M1 (Datenschicht) sind gebaut und offline getestet.
+**Stand:** M0 (Grundgerüst) und M1 (Datenschicht) sind gebaut, getestet und mit echten Daten
+gelaufen: alle 18 Klassen in EUR, USD, CHF und GBP.
 Regime-Erkennung, Empfehlungen, Backtest und Dashboard folgen in M2 bis M8.
 Offene Punkte am Prüfpunkt: [`docs/checkpoints/M1.md`](docs/checkpoints/M1.md).
 
@@ -62,7 +63,7 @@ Das Tool meldet dann, welche Datei fehlt.
 | Datei | Inhalt |
 | --- | --- |
 | `data/static/manual/<Datensatz>.<Endung>` | Ersatz für einen gescheiterten Download (z. B. `aqr_tsmom.xlsx`, `nareit.xls`) |
-| `data/static/manual/gold_monthly_usd.csv` | Goldpreis des World Gold Council: Spalten `date,USD` |
+| `data/static/manual/gold_monthly_usd.csv` | Optional: Monatsendpreise Gold des World Gold Council, Spalten `date,USD`; danach in `config/universe.yaml` beim Gold-Backfill `static: "gold_manual:USD"` eintragen |
 | `data/static/issuer_nav/<Fonds>.xls` | NAV-Historie eines UCITS-ETF von der Emittenten-Seite |
 
 Eckwerte privater Infrastruktur:

@@ -7,7 +7,7 @@
 #
 # quality: original = Referenzgröße selbst | proxy = investierbarer Fonds/ETF |
 #          synthetisch = aus anderen Reihen konstruiert
-# verified: true erst, wenn `navigator data sources --probe` die Reihe live bestätigt hat.
+# Welche Reihen live bestätigt sind, steht in docs/checkpoints/ (Validierungsbericht).
 
 calibration:
   window_months: 36      # Überlappungsfenster nach Proxy-Start
@@ -324,14 +324,15 @@ assets:
         quality: original
         backfill: true
         currency: USD
-        expected_start: "1968-04"
+        expected_start: "1960-01"
         symbols:
-          bundesbank: "BBEX3/D.XAU.USD.EA.AC.C05"
           static: "worldbank_pinksheet:Gold"
         note: >-
-          Londoner Nachmittagsfixing in USD (Bundesbank, täglich); ersatzweise die
-          Monatsdurchschnitte der Weltbank ab 1960. World-Gold-Council-Monatspreise
-          brauchen eine Registrierung (Datensatz gold_manual, CSV von Hand ablegen).
+          Goldpreis in USD als Monatsdurchschnitt (Weltbank, ab 1960). Durchschnitte
+          glätten die Monatsrenditen; die Naht zu GLD bleibt deshalb unkalibriert.
+          Die Bundesbank liefert das Londoner Fixing nicht mehr (Live-Lauf 17.11.2026).
+          World-Gold-Council-Monatsendpreise wären genauer, brauchen aber eine
+          Registrierung (Datensatz gold_manual, CSV von Hand ablegen).
 
   commodities:
     name: Rohstoffe breit

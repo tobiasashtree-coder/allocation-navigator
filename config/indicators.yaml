@@ -1,7 +1,7 @@
 # Indikatoren mit Veröffentlichungsverzögerung und Transformation (Abschnitt 4.1, 4.3, 6.2).
 #
 # M1 lädt diese Reihen und legt sie point-in-time ab. Die Transformation zu Scores
-# folgt in M2. `verified: true` erst nach erfolgreichem `navigator data sources --probe`.
+# folgt in M2. Welche Reihen live bestätigt sind, steht in docs/checkpoints/.
 #
 # vintages: true  -> echte Datenstände aus ALFRED (Veröffentlichungsdatum je Wert)
 # publication_lag -> konservative Verzögerung nach Periodenende, wo es keine Vintages gibt
