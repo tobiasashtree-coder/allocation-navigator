@@ -1,0 +1,64 @@
+# Langfristiger Schuldenzyklus als Overlay (Spezifikation Abschnitt 6). Umsetzung in M4.
+# Das Overlay ist immer abschaltbar und wird getrennt ausgewiesen.
+
+phases:
+  - gesund
+  - Aufbau
+  - Übertreibung
+  - Spätphase (Finanzierungsstress)
+  - Entschuldung / Monetarisierung
+  - Neuordnung
+
+# Skalierung des Overlay-Vektors je Phase (0 bis 1).
+# Entwurf: Die Spezifikation nennt nur lambda = 1 für die Spätphase.
+lambda_by_phase:
+  gesund: 0.0
+  Aufbau: 0.0
+  Übertreibung: 0.5
+  Spätphase (Finanzierungsstress): 1.0
+  Entschuldung / Monetarisierung: 1.0
+  Neuordnung: 0.5
+
+overlay_strength: 1.0           # Standardeinstellung „hohe Wirkung"
+
+# Manuelle Einschätzung je Land mit Datum, Quelle, Begründung und Gegenposition (6.3).
+assessments:
+  US:
+    phase: Spätphase (Finanzierungsstress)
+    date: "2026-11-16"
+    sources:
+      - https://fortune.com/2026/03/14/ray-dalio-big-cycle-debt-crisis-political-disorder-world-order/
+      - https://www.businesstoday.in/world/story/us-debt-hits-danger-zone-ray-dalio-explains-why-a-big-debt-cycle-could-trigger-a-crisis-550775-2026-08-23
+    rationale: >-
+      Dalio verortet die USA 2026 in der Spätphase des langfristigen Schuldenzyklus:
+      steigende Langfristzinsen, Währungsschwäche, sinkende Nachfrage nach langlaufenden
+      Staatsanleihen, Defizit rund 2 Bio. USD. Das ist Dalios Einschätzung, kein
+      gesichertes Faktum.
+    counter_position: >-
+      Status des US-Dollar als Reservewährung; mögliche Produktivitätsgewinne durch KI;
+      tiefe, liquide Kapitalmärkte.
+  EA: {phase: null}
+  DE: {phase: null}
+  FR: {phase: null}
+  IT: {phase: null}
+  JP: {phase: null}
+  GB: {phase: null}
+  CN: {phase: null}
+
+# Verschiebung der Basisgewichte bei Spätphase und lambda = 1 (6.4). Startwerte.
+overlay_vectors:
+  US:
+    gold: {type: target_range, min: 0.10, max: 0.15}
+    bond_inflation_linked: {type: shift_pp, value: 5.0}
+    infrastructure: {type: shift_pp, value: 2.5}        # Spezifikation: +2 bis +3
+    bond_us_long: {type: shift_pp, value: -6.5}         # Spezifikation: -5 bis -8
+    equity_us: {type: shift_to_low_stress, share: 0.25} # Anteil: Entwurf, nicht beziffert
+    bitcoin: {type: lift_to_cap}
+    unhedged_usd_cap: {type: cap, value: 0.30}          # Entwurf, nicht beziffert
+
+# Messbarer Schuldenstress-Score je Land, 0 bis 100 (6.2). Schwellen werden in M4 mit
+# der Jordà-Schularick-Taylor-Datenbank kalibriert und dann hier festgeschrieben.
+score:
+  countries: [US, DE, FR, IT, JP, GB, CN]
+  warn_if_phases_apart: 1
+  thresholds: null

@@ -1,0 +1,54 @@
+# Basiswährung und Währungsdaten (Spezifikation Abschnitt 7.6).
+# Die Basiswährung ist hier umstellbar. Renditen, Risiken und Gewichte werden in der
+# gewählten Basis neu berechnet.
+
+base: EUR
+supported: [EUR, USD, CHF, GBP]
+dem_per_eur: 1.95583          # unwiderruflicher Umrechnungskurs, für die Zeit vor 1999
+scenario_shock: 0.10          # Szenario ±10 % gegenüber dem USD
+
+# Wechselkurse. Reihenfolge je Währung = Vorrang; spätere Reihen füllen Lücken (v. a. vor 1999).
+#   per_eur      : 1 EUR = x Einheiten der Währung (EZB-Referenzkurs)
+#   usd_per_unit : 1 Einheit der Währung = x USD
+#   per_usd      : 1 USD = x Einheiten der Währung
+#   dem_per_usd  : 1 USD = x DEM; ergibt mit dem_per_eur einen synthetischen EUR-Kurs
+fx_series:
+  - {currency: USD, quote: per_eur, symbols: {ecb: "EXR/D.USD.EUR.SP00.A"}}
+  - {currency: GBP, quote: per_eur, symbols: {ecb: "EXR/D.GBP.EUR.SP00.A"}}
+  - {currency: CHF, quote: per_eur, symbols: {ecb: "EXR/D.CHF.EUR.SP00.A"}}
+  - {currency: JPY, quote: per_eur, symbols: {ecb: "EXR/D.JPY.EUR.SP00.A"}}
+  - {currency: EUR, quote: usd_per_unit, symbols: {fred: DEXUSEU}, note: Zweitquelle ab 1999}
+  - {currency: EUR, quote: dem_per_usd, symbols: {fred: DEXGEUS}, note: synthetischer EUR vor 1999}
+  - {currency: GBP, quote: usd_per_unit, symbols: {fred: DEXUSUK}}
+  - {currency: CHF, quote: per_usd, symbols: {fred: DEXSZUS}}
+  - {currency: JPY, quote: per_usd, symbols: {fred: DEXJPUS}}
+
+# Kurzfristzinsen in Prozent p. a. je Währung, jüngstes Segment zuerst.
+# Verwendung: Cash-Rendite der Basiswährung und Zinsdifferenz der Währungssicherung.
+short_rates:
+  EUR:
+    - {id: estr, symbols: {ecb: "EST/B.EU000A2X2A25.WT"}}
+    - {id: eonia, symbols: {ecb: "EON/D.EONIA_TO.RATE"}}
+    - id: de_3m_interbank
+      symbols:
+        oecd: "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/DEU.M.IR3TIB.PA._Z._Z._Z._Z.N"
+        fred: IR3TIB01DEM156N
+      note: Geldmarktsatz Deutschland (OECD) für die Zeit vor 1999
+  USD:
+    - {id: fed_funds, symbols: {fred: DFF}}
+  GBP:
+    - {id: sonia, symbols: {fred: IUDSOIA}}
+    - id: gb_3m_interbank
+      symbols:
+        oecd: "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/GBR.M.IR3TIB.PA._Z._Z._Z._Z.N"
+        fred: IR3TIB01GBM156N
+  CHF:
+    - id: ch_3m_interbank
+      symbols:
+        oecd: "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/CHE.M.IR3TIB.PA._Z._Z._Z._Z.N"
+        fred: IR3TIB01CHM156N
+  JPY:
+    - id: jp_3m_interbank
+      symbols:
+        oecd: "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/JPN.M.IR3TIB.PA._Z._Z._Z._Z.N"
+        fred: IR3TIB01JPM156N

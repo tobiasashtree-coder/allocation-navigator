@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      PYTHONUTF8: "1"
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
     steps:

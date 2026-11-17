@@ -1,0 +1,238 @@
+# Datenquellen hinter der gemeinsamen Provider-Schnittstelle (Spezifikation Abschnitt 3).
+#
+# priority: kleinere Zahl = höhere Priorität. Für jede Reihe gilt die Quelle mit der
+# höchsten Priorität, die eingeschaltet ist, einen Key hat (falls nötig) und die Reihe
+# abdeckt. Die nächste Quelle dient als Zweitquelle für die Kreuzprüfung.
+#
+# Ein späteres Abo aktivieren: API-Key in .env setzen und hier `enabled: true`.
+# Der Provider übernimmt dann wegen seiner Priorität automatisch seine Reihen.
+
+cross_check_tolerance: 0.005     # 0,5 % Monatsrendite
+cache:
+  max_age_hours: 20
+  price_overlap_days: 15
+  static_max_age_days: 30
+
+sources:
+  # ---------------------------------------------------------------- Makro
+  fred:
+    priority: 10
+    api_key_env: FRED_API_KEY
+    requires_key: false            # ohne Key: CSV-Abruf ohne Vintages (mit Warnung)
+    rate_limit_per_min: 100
+    license: FRED Terms of Use
+    license_url: https://fred.stlouisfed.org/docs/api/terms_of_use.html
+    note: Einzige freie Quelle mit Datenständen zu früheren Zeitpunkten (ALFRED).
+    options:
+      api_url: https://api.stlouisfed.org/fred
+      csv_url: https://fred.stlouisfed.org/graph/fredgraph.csv
+  ecb:
+    priority: 10
+    rate_limit_per_min: 60
+    license: ECB Data Portal, freie Nutzung mit Quellenangabe
+    license_url: https://data.ecb.europa.eu/help/api/overview
+    commercial_use: true
+    options:
+      url_template: "https://data-api.ecb.europa.eu/service/data/{flow}/{key}"
+      params: {format: csvdata}
+  eurostat:
+    priority: 20
+    rate_limit_per_min: 60
+    license: Eurostat, freie Weiterverwendung mit Quellenangabe
+    license_url: https://ec.europa.eu/eurostat/about-us/policies/copyright
+    commercial_use: true
+    options:
+      url_template: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/{flow}/{key}"
+      params: {format: SDMX-CSV}
+  oecd:
+    priority: 20
+    rate_limit_per_min: 20
+    license: OECD Terms and Conditions
+    license_url: https://www.oecd.org/en/about/terms-conditions.html
+    options:
+      url_template: "https://sdmx.oecd.org/public/rest/data/{flow}/{key}"
+      params: {dimensionAtObservation: AllDimensions, format: csvfile}
+  bis:
+    priority: 20
+    rate_limit_per_min: 30
+    license: BIS, freie Nutzung mit Quellenangabe
+    license_url: https://www.bis.org/terms_conditions.htm
+    options:
+      url_template: "https://stats.bis.org/api/v1/data/{flow}/{key}"
+      params: {format: csv}
+  bundesbank:
+    priority: 8                      # vor FRED: Monatsendstände statt Monatsdurchschnitte
+    rate_limit_per_min: 30
+    license: Deutsche Bundesbank, freie Nutzung mit Quellenangabe
+    license_url: https://www.bundesbank.de/de/startseite/nutzungsbedingungen
+    commercial_use: true
+    note: >-
+      Nicht in der Quellentabelle der Spezifikation, aber dort als Herkunft der
+      Bund-Renditen genannt; siehe docs/decisions.md.
+    options:
+      url_template: "https://api.statistiken.bundesbank.de/rest/data/{flow}/{key}"
+      params: {format: sdmx_csv, lang: en}
+
+  # ---------------------------------------------------------------- Markt
+  yfinance:
+    priority: 20
+    rate_limit_per_min: 40
+    license: Yahoo Finance, inoffizielle Schnittstelle, nur private Nutzung
+    license_url: https://legal.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.html
+    note: Primärquelle für Kurse; bricht gelegentlich ohne Vorwarnung, daher Cache und Zweitquelle.
+  tiingo:
+    priority: 30
+    api_key_env: TIINGO_API_KEY
+    requires_key: true
+    rate_limit_per_min: 20           # Gratis-Tarif: rund 50 Anfragen je Stunde, 1.000 je Tag;
+                                     # ein Lauf braucht etwa 35 (Zweitquelle der US-Proxies)
+    license: Tiingo, Gratis-Tarif nur für private Nutzung
+    license_url: https://www.tiingo.com/about/pricing
+    options:
+      api_url: https://api.tiingo.com/tiingo/daily
+  coinmetrics:
+    priority: 10
+    rate_limit_per_min: 90           # Limit: 10 Anfragen je 6 Sekunden
+    license: Coin Metrics Community Data, Creative Commons (CC BY-NC 4.0)
+    license_url: https://docs.coinmetrics.io/packages/coin-metrics-community-data
+    options:
+      api_url: https://community-api.coinmetrics.io/v4
+      metrics: [ReferenceRateUSD, PriceUSD]
+  issuer_nav:
+    priority: 40
+    rate_limit_per_min: 10
+    license: Emittenten-Websites (iShares), Nutzungsbedingungen je Emittent
+    note: >-
+      Zweitquelle für EUR-notierte Proxies. Ist `url` leer oder der Abruf nicht erlaubt,
+      genügt eine manuell abgelegte Datei unter data/static/issuer_nav/<name>.csv|xls|xlsx.
+    options:
+      automated_access: unknown      # allowed | forbidden | unknown (unknown = nur manuelle Datei)
+      funds:
+        ishares_eur_govt_1_3:
+          isin: IE00B14X4Q57
+          url: ""
+        ishares_core_eur_govt:
+          isin: IE00B4WXJJ64
+          url: ""
+        ishares_global_infra:
+          isin: IE00B1FZS467
+          url: ""
+  private_infra:
+    priority: 50
+    rate_limit_per_min: 6
+    license: Veröffentlichte Eckwerte Dritter; Nutzungsbedingungen der Seiten beachten
+    note: >-
+      Dreistufiger Import laut Spezifikation Abschnitt 2. Neue Werte gelten erst nach
+      Bestätigung. Solange automated_access nicht ausdrücklich `allowed` ist, erzeugt
+      das Tool nur eine Erinnerung zur manuellen Eingabe.
+    options:
+      pages:
+        msci_private_infra:
+          series: msci_private_infra_12m
+          url: https://www.msci.com/data-and-analytics/private-asset-solutions/global-private-infrastructure-asset-index-q1-2026-results
+          automated_access: unknown
+          frequency: Q
+        infra300:
+          series: infra300_monthly
+          url: https://www.infrastructureinvestor.com/infra300-posts-best-monthly-return-in-2026/
+          automated_access: unknown
+          frequency: M
+      nav_companies:
+        hicl: {name: HICL Infrastructure, ticker: HICL.L}
+        inpp: {name: International Public Partnerships, ticker: INPP.L}
+        three_i_infra: {name: 3i Infrastructure, ticker: 3IN.L}
+      unsmoothing: {method: geltner, rho: null}
+
+  # ------------------------------------------------------------- Historie
+  static:
+    priority: 60
+    rate_limit_per_min: 12
+    license: Je Datensatz (French, AQR, Nareit, JST, Shiller); JST und AQR nur nicht-kommerziell
+    options:
+      datasets:
+        french_us_factors:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_CSV.zip
+          format: french_csv
+          scale: 0.01
+        french_europe:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Europe_3_Factors_CSV.zip
+          format: french_csv
+          scale: 0.01
+        french_japan:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Japan_3_Factors_CSV.zip
+          format: french_csv
+          scale: 0.01
+        french_emerging:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/Emerging_5_Factors_CSV.zip
+          format: french_csv
+          scale: 0.01
+        french_ind12:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/12_Industry_Portfolios_CSV.zip
+          format: french_csv
+          scale: 0.01
+        french_intl_europe:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_International_Indices.zip
+          format: french_dat
+          member: Ind_Eur_With_UK.Dat
+          scale: 0.01
+        french_intl_japan:
+          url: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_International_Countries.zip
+          format: french_dat
+          member: Japan.Dat
+          scale: 0.01
+        aqr_tsmom:
+          url: https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Time-Series-Momentum-Factors-Monthly.xlsx
+          format: excel
+          sheet: 0
+          skiprows: 17
+        aqr_commodities:
+          url: https://www.aqr.com/-/media/AQR/Documents/Insights/Data-Sets/Commodities-for-the-Long-Run-Index-Level-Data-Monthly.xlsx
+          format: excel
+          sheet: 0
+          skiprows: 17
+        nareit:
+          url: https://www.reit.com/sites/default/files/returns/MonthlyHistoricalReturns.xls
+          format: excel_positional
+          sheet: Index Data
+          skiprows: 9
+          columns: {all_equity: 23}
+          value_type: auto            # Indexstand oder Rendite in Prozent wird erkannt
+        gold_manual:
+          format: manual_csv
+          path: manual/gold_monthly_usd.csv
+          value_type: level
+        jst:
+          url: https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx
+          format: excel
+          sheet: 0
+          skiprows: 0
+          note: Jordà-Schularick-Taylor; wird ab M4 für die Kalibrierung des Schuldenzyklus genutzt.
+
+  # ---------------------------------- kostenpflichtig: vorbereitet, deaktiviert
+  eodhd:
+    enabled: false
+    paid: true
+    priority: 5
+    api_key_env: EODHD_API_KEY
+    requires_key: true
+    rate_limit_per_min: 600
+    license: EODHD (Abo erforderlich)
+    license_url: https://eodhd.com/pricing
+    options:
+      api_url: https://eodhd.com/api/eod
+  sipa:
+    enabled: false
+    paid: true
+    priority: 5
+    api_key_env: SIPA_API_KEY
+    requires_key: true
+    license: SIPA / Scientific Infra (infra300), Lizenz erforderlich
+    license_url: https://www.pei.group/?p=4919
+  msci:
+    enabled: false
+    paid: true
+    priority: 5
+    api_key_env: MSCI_API_KEY
+    requires_key: true
+    license: MSCI Private Asset Indexes, Lizenz erforderlich
+    license_url: https://www.msci.com/data-and-analytics/private-asset-solutions

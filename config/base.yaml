@@ -1,0 +1,49 @@
+# Basisallokation und Empfehlungs-Engine (Spezifikation Abschnitt 7). Umsetzung in M5.
+# Festgelegt am 16.11.2026: Risikoparität über vier Umfeldkörbe.
+
+method: risk_parity_baskets
+
+# Je Quadrant ein Umfeldkorb aus den Klassen, die dort profitieren (Abbildung in 4.2).
+# Die vier Körbe tragen gleich viel Risiko; innerhalb der Körbe gilt gleicher
+# Risikobeitrag (Equal Risk Contribution). Ohne Hebel ergibt das bewusst einen hohen
+# Anleiheanteil.
+baskets:
+  disinflationary_boom: [equity_us, equity_europe, equity_japan, equity_em, bond_corp_ig, bond_high_yield, reits]
+  reflation: [commodities, equity_em, bond_high_yield, bond_em, infrastructure]
+  deflationary_bust: [bond_eur_long, bond_us_long, bond_eur_short, cash, gold]
+  stagflation: [gold, bond_inflation_linked, infrastructure, trend, bitcoin]   # Bitcoin-Zuordnung: Entwurf
+
+covariance:
+  window_months: 60             # 5 Jahre Monatsdaten
+  weighting: exponential
+  halflife_months: 30           # Entwurf: in der Spezifikation nicht beziffert
+  shrinkage: ledoit_wolf
+  currency: base                # in Basiswährung, damit Währungsrisiko in die Risikobeiträge eingeht
+
+black_litterman:
+  prior: reverse_optimization   # implizite Renditen der Risikoparitäts-Basis
+  tau: 0.05                     # Entwurf: in der Spezifikation nicht beziffert
+  regime_return_shrinkage: james_stein
+  omega_scales_with_conviction: true
+  overlay_as_separate_view: true
+  bitcoin_prior_weight: 0.8     # Entwurf: starke Schrumpfung zur ökonomischen Annahme (kurze Historie)
+
+outputs:
+  ampel:
+    threshold_sd: 0.5           # Grenzen bei ±0,5 Standardabweichungen der erwarteten Überrendite
+  tilts:
+    scale: 1.0                  # Entwurf
+    limit_pp: 10.0              # Standard ±10 Prozentpunkte
+    limit_small_pp: 5.0         # kleine Klassen ±5 Prozentpunkte
+    small_classes: [bond_em, trend, bitcoin, infrastructure, reits, commodities]   # Entwurf
+  target_weights:
+    resampling_simulations: 500 # Michaud-Resampling
+    tracking_error_max: 0.03    # p. a. gegenüber der Basis
+    turnover_max_quarter: 0.20
+    no_trade_band_pp: 2.0
+
+constraints:
+  long_only: true
+  leverage: false
+  max_weight: {bitcoin: 0.03}
+  max_unhedged_usd: null        # das Overlay senkt diese Obergrenze (debt_cycle.yaml)

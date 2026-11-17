@@ -44,6 +44,7 @@ packages = ["src/navigator"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q --strict-markers"
 markers = [
     "live: Tests gegen echte Datenquellen (brauchen Netz und API-Keys; nicht in der Standard-CI)",
@@ -59,7 +60,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "PTH", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003"]  # deutsche Sonderzeichen in Texten erlaubt
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B011"]
+"tests/*" = ["B011", "E501"]  # Testdaten dürfen lange Zeilen haben
 
 [tool.mypy]
 python_version = "3.12"

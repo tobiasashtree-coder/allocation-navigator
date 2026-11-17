@@ -1,0 +1,485 @@
+# Anlageuniversum: 18 Assetklassen in fünf Gruppen (Spezifikation Abschnitt 2).
+#
+# Je Klasse eine Liste von Segmenten, das bevorzugte (jüngste) zuerst. Frühere
+# Zeiträume füllt das jeweils nächste Segment (Backfill). Die Naht bestimmt sich
+# aus den tatsächlich vorhandenen Daten, nicht aus `expected_start`; weicht der
+# echte Start stark ab, meldet das der Validierungsbericht.
+#
+# quality: original = Referenzgröße selbst | proxy = investierbarer Fonds/ETF |
+#          synthetisch = aus anderen Reihen konstruiert
+# verified: true erst, wenn `navigator data sources --probe` die Reihe live bestätigt hat.
+
+calibration:
+  window_months: 36      # Überlappungsfenster nach Proxy-Start
+  min_months: 12         # darunter keine Kalibrierung (Backfill bleibt unverändert)
+  shrinkage: 0.5         # Schrumpfung von alpha/beta Richtung (0, 1)
+  min_correlation: 0.6   # darunter passt der Backfill zu schlecht: keine Kalibrierung, Warnung
+  beta_bounds: [0.5, 2.0]
+  alpha_bound_monthly: 0.005
+
+assets:
+  # ------------------------------------------------------------------ Aktien
+  equity_us:
+    name: Aktien USA
+    group: Aktien
+    role: Wachstum steigend
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vfinx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1976-08"
+        symbols: {yfinance: VFINX, tiingo: VFINX, eodhd: VFINX.US}
+        fallback_symbols: {yfinance: SPY, tiingo: SPY, eodhd: SPY.US}
+      - id: french_us_market
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1926-07"
+        symbols: {static: "french_us_factors:Mkt-RF+RF"}
+
+  equity_europe:
+    name: Aktien Europa
+    group: Aktien
+    role: Wachstum steigend
+    fx_exposure: {EUR: 0.50, GBP: 0.23, CHF: 0.15, OTHER: 0.12}
+    segments:
+      - id: vgk
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "2005-03"
+        symbols: {yfinance: VGK, tiingo: VGK, eodhd: VGK.US}
+      - id: ezu
+        kind: price
+        quality: proxy
+        backfill: true
+        currency: USD
+        expected_start: "2000-07"
+        symbols: {yfinance: EZU, tiingo: EZU, eodhd: EZU.US}
+        note: Nur Eurozone; wird an der Naht auf VGK kalibriert.
+      - id: french_europe
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1990-07"
+        symbols: {static: "french_europe:Mkt-RF+RF"}
+      - id: french_intl_europe
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1975-01"
+        symbols: {static: "french_intl_europe:Mkt"}
+        note: French International Indices (Europa inkl. UK), USD-Renditen.
+
+  equity_japan:
+    name: Aktien Japan
+    group: Aktien
+    role: Wachstum steigend
+    fx_exposure: {JPY: 1.0}
+    segments:
+      - id: ewj
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1996-03"
+        symbols: {yfinance: EWJ, tiingo: EWJ, eodhd: EWJ.US}
+      - id: french_japan
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1990-07"
+        symbols: {static: "french_japan:Mkt-RF+RF"}
+      - id: french_intl_japan
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1975-01"
+        symbols: {static: "french_intl_japan:Mkt"}
+
+  equity_em:
+    name: Aktien Schwellenländer
+    group: Aktien
+    role: Wachstum steigend, schwacher USD
+    fx_exposure: {EM: 1.0}
+    segments:
+      - id: veiex
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1994-05"
+        symbols: {yfinance: VEIEX, tiingo: VEIEX, eodhd: VEIEX.US}
+        fallback_symbols: {yfinance: EEM, tiingo: EEM, eodhd: EEM.US}
+      - id: french_emerging
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1989-07"
+        symbols: {static: "french_emerging:Mkt-RF+RF"}
+
+  # ---------------------------------------------------------------- Anleihen
+  bond_eur_short:
+    name: EUR-Staatsanleihen kurz (1–3 J.)
+    group: Anleihen
+    role: Deflation, Rezession
+    hedged: true
+    fx_exposure: {EUR: 1.0}
+    segments:
+      - id: ishares_eur_govt_1_3
+        kind: price
+        quality: proxy
+        currency: EUR
+        distributing: true
+        expected_start: "2006-06"
+        symbols: {yfinance: IBCA.DE, issuer_nav: ishares_eur_govt_1_3, eodhd: IBCA.XETRA}
+      - id: synth_bund_2y
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: EUR
+        expected_start: "1972-09"
+        maturity_years: 2.0
+        yield_symbols:
+          bundesbank: "BBSIS/M.I.ZST.ZI.EUR.S1311.B.A604.R02XX.R.A.A._Z._Z.A"
+        note: Bundesbank-Zinsstruktur (Monatsendstände), Restlaufzeit 2 Jahre.
+
+  bond_eur_long:
+    name: EUR-Staatsanleihen lang (7–10+ J.)
+    group: Anleihen
+    role: Wachstum und Inflation fallend
+    hedged: true
+    fx_exposure: {EUR: 1.0}
+    segments:
+      - id: ishares_core_eur_govt
+        kind: price
+        quality: proxy
+        currency: EUR
+        distributing: true
+        expected_start: "2009-04"
+        symbols: {yfinance: EUNH.DE, issuer_nav: ishares_core_eur_govt, eodhd: EUNH.XETRA}
+        note: >-
+          Laut Spezifikation. Der ETF deckt alle Laufzeiten ab (Duration rund 7 Jahre),
+          nicht nur 7–10+ Jahre; siehe docs/decisions.md.
+      - id: synth_bund_10y
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: EUR
+        expected_start: "1972-09"
+        maturity_years: 10.0
+        yield_symbols:
+          bundesbank: "BBSIS/M.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A"
+          oecd: "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0/DEU.M.IRLT.PA._Z._Z._Z._Z.N"
+          fred: IRLTLT01DEM156N
+        note: Bundesbank ab 1972 (Monatsende); OECD/FRED ab 1956 (Monatsdurchschnitt) als Ersatz.
+
+  bond_us_long:
+    name: US-Treasuries lang (gesichert)
+    group: Anleihen
+    role: Wachstum und Inflation fallend
+    hedged: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vustx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1986-05"
+        symbols: {yfinance: VUSTX, tiingo: VUSTX, eodhd: VUSTX.US}
+        fallback_symbols: {yfinance: TLT, tiingo: TLT, eodhd: TLT.US}
+      - id: synth_ust_30y
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1977-02"
+        maturity_years: 25.0
+        yield_symbols: {fred: DGS30}
+      - id: synth_ust_10y
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1962-01"
+        maturity_years: 10.0
+        yield_symbols: {fred: DGS10}
+        note: Kürzere Duration; die Kalibrierung an der Naht skaliert auf das lange Segment.
+
+  bond_inflation_linked:
+    name: Inflationsindexierte Anleihen (TIPS / €-Linker)
+    group: Anleihen
+    role: Inflation steigend, Wachstum fallend
+    hedged: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vipsx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "2000-06"
+        symbols: {yfinance: VIPSX, tiingo: VIPSX, eodhd: VIPSX.US}
+        fallback_symbols: {yfinance: TIP, tiingo: TIP, eodhd: TIP.US}
+      - id: synth_tips_10y
+        kind: synthetic_linker
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "2003-01"
+        maturity_years: 10.0
+        yield_symbols: {fred: DFII10}
+        cpi_symbols: {fred: CPIAUCNS}
+        note: >-
+          Beginnt später als der Fonds und dient deshalb als Gegenprüfung und Ersatz.
+          Vor 2000 bleibt die Klasse laut Spezifikation eine Lücke.
+
+  bond_corp_ig:
+    name: Unternehmensanleihen IG
+    group: Anleihen
+    role: Wachstum moderat, Inflation fallend
+    hedged: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vwesx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1973-07"
+        symbols: {yfinance: VWESX, tiingo: VWESX, eodhd: VWESX.US}
+        fallback_symbols: {yfinance: LQD, tiingo: LQD, eodhd: LQD.US}
+      - id: synth_baa_daily
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1986-01"
+        maturity_years: 20.0
+        yield_symbols: {fred: DBAA}
+      - id: synth_baa_monthly
+        kind: synthetic_bond
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1919-01"
+        maturity_years: 20.0
+        yield_symbols: {fred: BAA}
+        note: Monatsdurchschnitte der Moody's-Baa-Rendite; Renditen dadurch geglättet.
+
+  bond_high_yield:
+    name: High Yield
+    group: Anleihen
+    role: Wachstum steigend
+    hedged: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vwehx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1978-12"
+        symbols: {yfinance: VWEHX, tiingo: VWEHX, eodhd: VWEHX.US}
+        fallback_symbols: {yfinance: HYG, tiingo: HYG, eodhd: HYG.US}
+        note: >-
+          Kein Backfill: FRED liefert die ICE-BofA-Spread-Reihen seit April 2026 nur
+          noch für drei Jahre (siehe docs/decisions.md).
+
+  bond_em:
+    name: Schwellenländeranleihen
+    group: Anleihen
+    role: Wachstum steigend, schwacher USD
+    optional: true
+    hedged: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: premx
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1994-12"
+        symbols: {yfinance: PREMX, tiingo: PREMX, eodhd: PREMX.US}
+        fallback_symbols: {yfinance: EMB, tiingo: EMB, eodhd: EMB.US}
+
+  # --------------------------------------------------------------- Sachwerte
+  gold:
+    name: Gold
+    group: Sachwerte
+    role: Inflation steigend, Währungsabwertung
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: gld
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "2004-11"
+        symbols: {yfinance: GLD, tiingo: GLD, eodhd: GLD.US}
+        fallback_symbols: {yfinance: "GC=F"}
+      - id: gold_london_fix
+        kind: level
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1968-04"
+        symbols:
+          bundesbank: "BBEX3/D.XAU.USD.EA.AC.C04"
+          static: "gold_manual:USD"
+        note: >-
+          Londoner Nachmittagsfixing in USD (Bundesbank, täglich). World-Gold-Council-
+          Monatspreise brauchen eine Registrierung und können als CSV manuell abgelegt
+          werden (data/static/manual/gold_monthly_usd.csv).
+
+  commodities:
+    name: Rohstoffe breit
+    group: Sachwerte
+    role: Inflation steigend, Wachstum steigend
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: pcrix
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "2002-06"
+        symbols: {yfinance: PCRIX, tiingo: PCRIX, eodhd: PCRIX.US}
+        fallback_symbols: {yfinance: DBC, tiingo: DBC, eodhd: DBC.US}
+      - id: aqr_commodities
+        kind: excess_plus_cash
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1877-02"
+        symbols: {static: "aqr_commodities:Excess return of equal-weight commodities portfolio"}
+        note: >-
+          S&P GSCI Total Return ist nicht frei verfügbar. Ersatz: gleichgewichteter
+          Rohstoff-Futures-Index von AQR (Überrendite) plus USD-Geldmarkt.
+
+  reits:
+    name: Immobilien (REITs)
+    group: Sachwerte
+    role: Wachstum steigend, Inflation moderat
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: vgsix
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "1996-05"
+        symbols: {yfinance: VGSIX, tiingo: VGSIX, eodhd: VGSIX.US}
+        fallback_symbols: {yfinance: VNQ, tiingo: VNQ, eodhd: VNQ.US}
+      - id: nareit_all_equity
+        kind: returns
+        quality: original
+        backfill: true
+        currency: USD
+        expected_start: "1972-01"
+        symbols: {static: "nareit:all_equity"}
+
+  infrastructure:
+    name: Infrastruktur (börsennotiert)
+    group: Sachwerte
+    role: Inflation steigend, defensiv
+    fx_exposure: {USD: 0.50, EUR: 0.20, OTHER: 0.30}
+    segments:
+      - id: ishares_global_infra_ucits
+        kind: price
+        quality: proxy
+        currency: EUR
+        distributing: true
+        expected_start: "2006-10"
+        symbols: {yfinance: IQQI.DE, issuer_nav: ishares_global_infra, eodhd: IQQI.XETRA}
+      - id: igf
+        kind: price
+        quality: proxy
+        backfill: true
+        currency: USD
+        expected_start: "2007-12"
+        symbols: {yfinance: IGF, tiingo: IGF, eodhd: IGF.US}
+        note: Gegencheck (S&P Global Infrastructure) und Ersatz, falls der UCITS-ETF ausfällt.
+      - id: french_utilities_telecom
+        kind: blend
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1926-07"
+        components:
+          - {symbols: {static: "french_ind12:Utils"}, weight: 0.5}
+          - {symbols: {static: "french_ind12:Telcm"}, weight: 0.5}
+
+  # -------------------------------------------------------- Diversifikatoren
+  trend:
+    name: Trendfolge (Managed Futures)
+    group: Diversifikatoren
+    role: Krisen und Stagflation
+    optional: true
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: dbmf
+        kind: price
+        quality: proxy
+        currency: USD
+        expected_start: "2019-05"
+        symbols: {yfinance: DBMF, tiingo: DBMF, eodhd: DBMF.US}
+        fallback_symbols: {yfinance: KMLM, tiingo: KMLM, eodhd: KMLM.US}
+      - id: aqr_tsmom
+        kind: excess_plus_cash
+        quality: synthetisch
+        backfill: true
+        currency: USD
+        expected_start: "1985-01"
+        symbols: {static: "aqr_tsmom:TSMOM"}
+
+  bitcoin:
+    name: Bitcoin
+    group: Diversifikatoren
+    role: Währungsabwertung, reichliche Liquidität
+    optional: true
+    enabled: true
+    max_weight: 0.03
+    in_regime_features: false
+    fx_exposure: {USD: 1.0}
+    segments:
+      - id: btc_reference_rate
+        kind: price
+        quality: original
+        currency: USD
+        expected_start: "2010-07"
+        symbols: {coinmetrics: btc, yfinance: BTC-USD}
+
+  # -------------------------------------------------------------- Liquidität
+  cash:
+    name: Cash in Basiswährung
+    group: Liquidität
+    role: Deflation, Unsicherheit
+    segments:
+      - id: base_currency_cash
+        kind: cash
+        quality: original
+        currency: BASE
+        note: Kurzfristzins der gewählten Basiswährung laut config/currency.yaml.
+
+# Vergleichsreihen außerhalb des Universums (Plausibilisierung, nicht Optimierung).
+references:
+  hicl:
+    name: HICL Infrastructure
+    currency: GBP
+    symbols: {yfinance: HICL.L}
+    purpose: Börsennotierte NAV-Näherung privater Infrastruktur
+  inpp:
+    name: International Public Partnerships
+    currency: GBP
+    symbols: {yfinance: INPP.L}
+    purpose: Börsennotierte NAV-Näherung privater Infrastruktur
+  three_i_infra:
+    name: 3i Infrastructure
+    currency: GBP
+    symbols: {yfinance: 3IN.L}
+    purpose: Börsennotierte NAV-Näherung privater Infrastruktur
+  msci_world:
+    name: MSCI-World-Proxy (60/40-Vergleich)
+    currency: USD
+    symbols: {yfinance: URTH, tiingo: URTH}
+    purpose: Aktienbaustein der 60/40-Vergleichsstrategie (Abschnitt 8.2)

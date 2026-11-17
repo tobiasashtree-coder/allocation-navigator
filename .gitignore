@@ -10,10 +10,12 @@ __pycache__/
 dist/
 build/
 
-# Daten und Berichte (nicht in Git; Datenstände liegen als Snapshots lokal)
-data/
-data_demo/
-reports/
+# Daten und Berichte (nicht in Git; Datenstände liegen als Snapshots lokal).
+# Mit führendem Schrägstrich, damit das Paket src/navigator/data NICHT ignoriert wird.
+/data/
+/data_demo/
+/reports/
+/reports_demo/
 
 # Editor
 .vscode/

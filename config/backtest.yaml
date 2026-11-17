@@ -1,0 +1,62 @@
+# Backtest (Spezifikation Abschnitt 8). Umsetzung in M6.
+# Alle Parameter werden VOR dem ersten Backtest hier festgeschrieben und versioniert.
+
+periods:
+  real_proxies_start: "2008-01"      # (a) nur echte Proxies
+  long_history_start: "1973-01"      # (b) mit Backfill, im Bericht als synthetisch markiert
+  development_end: "2007-12"         # Entwicklungszeitraum
+  test_start: "2008-01"              # Prüfzeitraum, wird erst am Ende ausgewertet
+  stress:
+    stagflation_1970s: ["1973-01", "1981-12"]
+    dotcom: ["2000-03", "2002-10"]
+    financial_crisis: ["2007-10", "2009-03"]
+    covid: ["2020-02", "2020-04"]
+    inflation_2022: ["2022-01", "2022-12"]
+
+rebalancing:
+  analysis: monthly
+  frequency: quarterly
+  no_trade_band_pp: 2.0
+  execution: first_trading_day_close_t_plus_1
+
+# Transaktionskosten je Klasse in Basispunkten (einfacher Weg).
+costs_bps:
+  equity_us: 10
+  equity_europe: 10
+  equity_japan: 10
+  equity_em: 10
+  bond_eur_short: 5
+  bond_eur_long: 5
+  bond_us_long: 5
+  bond_inflation_linked: 5
+  bond_corp_ig: 20
+  bond_high_yield: 20
+  bond_em: 20
+  gold: 10
+  commodities: 15
+  reits: 15
+  infrastructure: 15
+  trend: 20        # Entwurf: in der Spezifikation nicht genannt
+  bitcoin: 25      # Entwurf: in der Spezifikation nicht genannt
+  cash: 0
+
+benchmarks:
+  static_base: true
+  method_a: true
+  method_b: true
+  combined: true
+  combined_with_overlay: true
+  sixty_forty: {equity: msci_world, bonds: bond_eur_long, weights: [0.6, 0.4]}
+  equal_weight: true
+  minimum_variance: true
+  perfect_foresight: true            # Obergrenze, klar als nicht umsetzbar markiert
+
+placebo:
+  simulations: 1000
+  preserve_dwell_time: true
+  seed: 20261116
+
+robustness:
+  sensitivity_range: 0.5             # zentrale Parameter jeweils ±50 %
+  deflated_sharpe: true
+  lookahead_test: true

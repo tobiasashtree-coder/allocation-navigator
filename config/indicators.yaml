@@ -1,0 +1,192 @@
+# Indikatoren mit Veröffentlichungsverzögerung und Transformation (Abschnitt 4.1, 4.3, 6.2).
+#
+# M1 lädt diese Reihen und legt sie point-in-time ab. Die Transformation zu Scores
+# folgt in M2. `verified: true` erst nach erfolgreichem `navigator data sources --probe`.
+#
+# vintages: true  -> echte Datenstände aus ALFRED (Veröffentlichungsdatum je Wert)
+# publication_lag -> konservative Verzögerung nach Periodenende, wo es keine Vintages gibt
+#                    (und für die Zeit vor Beginn der ALFRED-Historie)
+
+defaults:
+  change_months: 6
+  zscore_window_months: 120
+  zscore_min_months: 60
+  clip: 3.0
+
+# BIP-Gewichte für das globale Aggregat (grob, jährlich zu prüfen)
+region_weights: {US: 0.45, EA: 0.30, JP: 0.08, CN: 0.17}
+
+indicators:
+  # ------------------------------------------------------------ USA Wachstum
+  us_cli:
+    name: OECD Composite Leading Indicator USA
+    region: US
+    axis: growth
+    symbols: {oecd: "OECD.SDD.STES,DSD_STES@DF_CLI,4.1/USA.M.LI.IX._Z.AA.IX._Z.H"}
+    publication_lag: {months: 2}
+    change: pct
+  us_indpro:
+    name: Industrieproduktion USA
+    region: US
+    axis: growth
+    symbols: {fred: INDPRO}
+    vintages: true
+    publication_lag: {months: 1}
+    change: pct
+  us_unrate:
+    name: Arbeitslosenquote USA (invertiert)
+    region: US
+    axis: growth
+    symbols: {fred: UNRATE}
+    vintages: true
+    publication_lag: {months: 1}
+    change: diff
+    invert: true
+  us_curve_10y3m:
+    name: Zinskurve USA 10J.–3M
+    region: US
+    axis: growth
+    symbols: {fred: T10Y3M}
+    frequency: D
+    change: level
+  us_credit_spread:
+    name: Kreditspread USA (Moody's Baa minus 10J.-Treasury, invertiert)
+    region: US
+    axis: growth
+    symbols: {fred: BAA10Y}
+    frequency: D
+    change: diff
+    invert: true
+    note: >-
+      Ersatz für den High-Yield-Spread: Die ICE-BofA-Reihe BAMLH0A0HYM2 liefert FRED
+      seit April 2026 nur noch für drei Jahre (siehe docs/decisions.md).
+  us_hy_spread_recent:
+    name: High-Yield-Spread USA (nur letzte drei Jahre, zur Anzeige)
+    region: US
+    axis: market
+    symbols: {fred: BAMLH0A0HYM2}
+    frequency: D
+    change: diff
+    invert: true
+  us_real_retail:
+    name: Reale Einzelhandelsumsätze USA
+    region: US
+    axis: growth
+    symbols: {fred: RRSFS}
+    vintages: true
+    publication_lag: {months: 2}
+    change: pct
+  # ----------------------------------------------------------- USA Inflation
+  us_core_cpi:
+    name: Kerninflation USA (3M annualisiert minus 12M)
+    region: US
+    axis: inflation
+    symbols: {fred: CPILFESL}
+    vintages: true
+    publication_lag: {months: 1}
+    change: core_momentum
+  us_breakeven_5y5y:
+    name: 5J5J-Breakeven-Inflation USA
+    region: US
+    axis: inflation
+    symbols: {fred: T5YIFR}
+    frequency: D
+    change: diff
+  us_wages:
+    name: Lohnwachstum USA (Stundenlöhne)
+    region: US
+    axis: inflation
+    symbols: {fred: AHETPI}
+    vintages: true
+    publication_lag: {months: 1}
+    change: pct
+  us_ppi:
+    name: Erzeugerpreise USA
+    region: US
+    axis: inflation
+    symbols: {fred: PPIACO}
+    vintages: true
+    publication_lag: {months: 1}
+    change: pct
+  us_cpi_nsa:
+    name: Verbraucherpreise USA, nicht saisonbereinigt (für synthetische TIPS)
+    region: US
+    axis: market
+    symbols: {fred: CPIAUCNS}
+    publication_lag: {months: 1}
+    change: pct
+  # ------------------------------------------------------ Eurozone Wachstum
+  ea_cli:
+    name: OECD Composite Leading Indicator Deutschland (Näherung Eurozone)
+    region: EA
+    axis: growth
+    symbols: {oecd: "OECD.SDD.STES,DSD_STES@DF_CLI,4.1/DEU.M.LI.IX._Z.AA.IX._Z.H"}
+    publication_lag: {months: 2}
+    change: pct
+  ea_indpro:
+    name: Industrieproduktion Eurozone
+    region: EA
+    axis: growth
+    symbols: {eurostat: "sts_inpr_m/M.PRD.B-D.SCA.I21.EA20"}
+    publication_lag: {months: 2}
+    change: pct
+  ea_unrate:
+    name: Arbeitslosenquote Eurozone (invertiert)
+    region: EA
+    axis: growth
+    symbols: {eurostat: "une_rt_m/M.SA.TOTAL.PC_ACT.T.EA20"}
+    publication_lag: {months: 2}
+    change: diff
+    invert: true
+  ea_euribor_3m:
+    name: Euribor 3 Monate (für die Zinskurve Eurozone)
+    region: EA
+    axis: market
+    symbols: {ecb: "FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA"}
+    change: level
+  ea_retail:
+    name: Reale Einzelhandelsumsätze Eurozone
+    region: EA
+    axis: growth
+    symbols: {eurostat: "sts_trtu_m/M.VOL_SLS.G47.SCA.I21.EA20"}
+    publication_lag: {months: 2}
+    change: pct
+  # ----------------------------------------------------- Eurozone Inflation
+  ea_core_hicp:
+    name: Kern-HVPI Eurozone (3M annualisiert minus 12M)
+    region: EA
+    axis: inflation
+    symbols: {ecb: "ICP/M.U2.N.XEF000.4.INX"}
+    publication_lag: {months: 1}
+    change: core_momentum
+  ea_ppi:
+    name: Erzeugerpreise Eurozone
+    region: EA
+    axis: inflation
+    symbols: {eurostat: "sts_inpp_m/M.PRC_PRR.B-E36.NSA.I21.EA20"}
+    publication_lag: {months: 2}
+    change: pct
+  # ------------------------------------------- Kredit- und Schuldenzyklus (BIS)
+  us_credit_gap:
+    name: Kredit/BIP-Lücke USA
+    region: US
+    axis: debt_cycle
+    symbols: {bis: "WS_CREDIT_GAP/Q.US.P.A.C"}
+    frequency: Q
+    publication_lag: {months: 6}
+    change: level
+  us_dsr_private:
+    name: Schuldendienstquote privater Sektor USA
+    region: US
+    axis: credit_cycle
+    symbols: {bis: "WS_DSR/Q.US.P"}
+    frequency: Q
+    publication_lag: {months: 6}
+    change: level
+  us_policy_rate:
+    name: Leitzins USA (effektive Fed Funds Rate)
+    region: US
+    axis: credit_cycle
+    symbols: {fred: DFF}
+    frequency: D
+    change: level

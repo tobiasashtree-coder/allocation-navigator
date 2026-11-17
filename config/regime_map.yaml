@@ -1,0 +1,44 @@
+# Erwartungsvektoren je Assetklasse und Quadrant (Spezifikation Abschnitt 4.2 und 4.4).
+#
+# Das sind ÖKONOMISCHE ANNAHMEN, nicht optimiert. Der Backtest prüft später nur, ob die
+# historischen Durchschnittsrenditen je Regime die Vorzeichen bestätigen; Abweichungen
+# werden berichtet, aber nie automatisch übernommen.
+#
+# STATUS: Entwurf. Abgeleitet aus der Quadranten-Abbildung und der Spalte „Rolle im
+# Regime" der Spezifikation. Bitte am Prüfpunkt M1 durchsehen, bevor M2 beginnt;
+# danach sind die Werte festgeschrieben.
+
+status: Entwurf, Freigabe am Prüfpunkt M1 offen
+scale_note: "-2 stark negativ, -1 negativ, 0 neutral, +1 positiv, +2 stark positiv (relativ zur Basis)"
+
+rules:
+  logistic_k: 1.5          # P(steigt) = 1 / (1 + exp(-k * Score))
+  neutral_band: 0.25       # Scores zwischen -0,25 und +0,25 gelten als neutral
+  confirm_months: 2        # Wechsel zählt nach zwei Monaten Führung in Folge ...
+  switch_probability: 0.60 # ... oder sofort ab 60 % Wahrscheinlichkeit
+
+quadrants:
+  disinflationary_boom: Disinflationärer Aufschwung (Wachstum steigt, Inflation fällt)
+  reflation: Reflation / Überhitzung (Wachstum steigt, Inflation steigt)
+  deflationary_bust: Deflationäre Rezession (Wachstum fällt, Inflation fällt)
+  stagflation: Stagflation (Wachstum fällt, Inflation steigt)
+
+expectations:
+  equity_us:             {disinflationary_boom: 2, reflation: 1, deflationary_bust: -2, stagflation: -2}
+  equity_europe:         {disinflationary_boom: 2, reflation: 1, deflationary_bust: -2, stagflation: -2}
+  equity_japan:          {disinflationary_boom: 2, reflation: 1, deflationary_bust: -2, stagflation: -1}
+  equity_em:             {disinflationary_boom: 1, reflation: 2, deflationary_bust: -2, stagflation: -1}
+  bond_eur_short:        {disinflationary_boom: 0, reflation: -1, deflationary_bust: 1, stagflation: 0}
+  bond_eur_long:         {disinflationary_boom: 1, reflation: -2, deflationary_bust: 2, stagflation: -1}
+  bond_us_long:          {disinflationary_boom: 1, reflation: -2, deflationary_bust: 2, stagflation: -1}
+  bond_inflation_linked: {disinflationary_boom: 0, reflation: 0, deflationary_bust: 1, stagflation: 2}
+  bond_corp_ig:          {disinflationary_boom: 2, reflation: -1, deflationary_bust: 0, stagflation: -1}
+  bond_high_yield:       {disinflationary_boom: 2, reflation: 1, deflationary_bust: -2, stagflation: -1}
+  bond_em:               {disinflationary_boom: 1, reflation: 2, deflationary_bust: -1, stagflation: -1}
+  gold:                  {disinflationary_boom: -1, reflation: 1, deflationary_bust: 1, stagflation: 2}
+  commodities:           {disinflationary_boom: 0, reflation: 2, deflationary_bust: -2, stagflation: 1}
+  reits:                 {disinflationary_boom: 2, reflation: 1, deflationary_bust: -2, stagflation: -1}
+  infrastructure:        {disinflationary_boom: 1, reflation: 1, deflationary_bust: -1, stagflation: 1}
+  trend:                 {disinflationary_boom: 0, reflation: 0, deflationary_bust: 1, stagflation: 2}
+  bitcoin:               {disinflationary_boom: 1, reflation: 1, deflationary_bust: -1, stagflation: 0}
+  cash:                  {disinflationary_boom: -1, reflation: -1, deflationary_bust: 1, stagflation: 1}
