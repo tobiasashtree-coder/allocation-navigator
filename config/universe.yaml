@@ -396,16 +396,6 @@ assets:
         note: >-
           iShares Global Infrastructure UCITS ETF USD (Acc), thesaurierend, FTSE Global Core
           Infrastructure wie in der Spezifikation.
-      - id: xtrackers_sp_global_infra_acc
-        kind: price
-        quality: proxy
-        backfill: true
-        currency: EUR
-        expected_start: "2008-01"
-        symbols: {yfinance: DX2E.DE, eodhd: DX2E.XETRA}
-        note: >-
-          Xtrackers S&P Global Infrastructure Swap UCITS ETF 1C (LU0322253229), thesaurierend,
-          als Brücke bis 2023 (anderer Index: S&P Global Infrastructure).
       - id: igf
         kind: price
         quality: proxy
@@ -413,7 +403,10 @@ assets:
         currency: USD
         expected_start: "2007-12"
         symbols: {yfinance: IGF, tiingo: IGF, eodhd: IGF.US}
-        note: Gegencheck (S&P Global Infrastructure) und Ersatz, falls der UCITS-ETF ausfällt.
+        note: >-
+          S&P Global Infrastructure, USD; Brücke bis zum Start von CBUX (2023). Der
+          thesaurierende Xtrackers-ETF DX2E wurde verworfen: Yahoo-Daten mit Split-Fehlern
+          und 16 Sprüngen über 25 % (Live-Lauf 17.11.2026).
       - id: french_utilities_telecom
         kind: blend
         quality: synthetisch
