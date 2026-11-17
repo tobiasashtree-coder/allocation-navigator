@@ -100,9 +100,19 @@ Eintrag auf dem Lauf mit echten Daten vom 17.11.2026 beruht, steht „Live-Lauf"
 | E-74 | Zielgewichte: Michaud-Resampling (je Simulation 60 Monatsrenditen aus N(μ_BL, Σ_post)), Restriktionen konvex (Summe 1, long only, Obergrenzen, Tracking Error ≤ 3 % mit Σ_post, Umschlag ≤ 20 % als halbe Summe der Änderungen, USD-Obergrenze aus dem Overlay), daher hält das Mittel sie ebenfalls ein; danach No-Trade-Band 2 Pp. Zerlegung: Regime = unbeschränkte aktive Gewichte aus den Regime-Sichten (Tracking Error 3 %), Overlay = Zuwachs durch die Overlay-Sicht, Restriktionen = Rest; die Summe ist per Konstruktion exakt. Zusammenführung = Mittel der Wahrscheinlichkeiten von A (global) und B (USA). | Resampling der Kovarianz mit; Zerlegung über Shapley-Werte. | Einfach, nachprüfbar und deckt das Abnahmekriterium ab. |
 | E-75 | Bitcoin: Regime-Renditen nach James-Stein zusätzlich zu 80 % zur Annahme geschrumpft (`bitcoin_prior_weight`). | Gleiche Behandlung wie die übrigen Klassen. | Mit kurzer Historie und sehr hohen Renditen ergab der erste Lauf ein Signal von +12 % p. a. |
 
+## Backtest (M6, 18.11.2026)
+
+| Nr. | Entscheidung | Alternativen | Grund |
+| --- | --- | --- | --- |
+| E-80 | Im Backtest skaliert das Overlay mit der **gemessenen** Phase der USA; die manuelle Einschätzung (datiert 2026) wäre für frühere Jahre Look-ahead. | Manuelle Phase für die ganze Historie. | Regel 1. |
+| E-81 | Resampling im Backtest mit 30 statt 500 Simulationen je Entscheidung (`backtest.yaml`). Placebo (1.000 Folgen), Sensitivität und Voraussicht laufen auf Form (ii) (Basis + Tilts, ohne Optimierung); die echte Form (ii) ist als eigene Strategie dabei, der p-Wert vergleicht gleiche Form mit gleicher Form. | 500 Simulationen und Placebo auf den Zielgewichten. | Laufzeit: 1.000 Placebo-Läufe mit Optimierung bräuchten Tage. |
+| E-82 | Sind Tracking-Error-Grenze und Umschlaggrenze gleichzeitig nicht erfüllbar (Portfolio weit von der Basis), geht das Portfolio mit dem erlaubten Umschlag so nah wie möglich an die Basis. | Portfolio unverändert lassen. | Im ersten Demo-Lauf blieben Strategien sonst dauerhaft stehen und drifteten. Der Bericht weist verletzte Grenzen aus. |
+| E-83 | Umsetzung zum Schluss des ersten Handelstags von t+1 wird mit Monatsdaten als Rendite ab dem Folgemonat genähert. Voraussicht = Regime von Methode A sechs Monate später (nicht umsetzbar, Obergrenze). 60/40: Welt-Aktien als feste Länderquoten (USA 62, Europa 22, Japan 6, Schwellenländer 10 %), da MSCI nicht frei verfügbar ist, plus EUR-Staatsanleihen lang. Klassen ohne volle 60 Monate Historie nehmen erst danach teil. | Tagesdaten; MSCI-World-Reihe. | Monatsdaten sind die gemeinsame Basis aller Klassen; Regel 7. |
+| E-84 | **Parameter festgeschrieben** vor dem ersten Backtest mit echten Daten (Konfigurations-Hash im Bericht): alle Entwürfe aus `base.yaml`, `regime_map.yaml`, `debt_cycle.yaml` und `backtest.yaml` gelten unverändert als festgelegt. | Weitere Anpassung vorab. | Regel 3 und 8.4; jede spätere Änderung wird als neue Variante gezählt (Deflated Sharpe). |
+
 ## Festzuschreibende Parameter mit Status „Entwurf"
 
-Diese Werte stehen in `config/`, sind aber in der Spezifikation nicht oder nicht eindeutig
+**Seit E-84 (18.11.2026) festgeschrieben.** Diese Werte stehen in `config/`, sind aber in der Spezifikation nicht oder nicht eindeutig
 beziffert. Sie müssen bestätigt sein, bevor der jeweilige Meilenstein beginnt, und sind
 danach festgeschrieben.
 

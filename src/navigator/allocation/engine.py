@@ -266,6 +266,31 @@ def _solve(
     return np.clip(np.asarray(w.value, dtype=float), 0.0, None)
 
 
+def _closest_feasible(
+    sigma: np.ndarray,
+    base: np.ndarray,
+    current: np.ndarray,
+    caps: np.ndarray,
+    turnover: float,
+) -> np.ndarray | None:
+    """Ist das Problem unzulässig (aktuelles Portfolio zu weit von der Basis für den
+    Tracking Error), geht es mit erlaubtem Umschlag so nah wie möglich an die Basis (E-82)."""
+    n = len(base)
+    w = cp.Variable(n)
+    chol = np.linalg.cholesky(sigma + 1e-10 * np.eye(n))
+    problem = cp.Problem(
+        cp.Minimize(cp.norm(chol.T @ (w - base), 2)),
+        [cp.sum(w) == 1, w >= 0, w <= caps, 0.5 * cp.norm(w - current, 1) <= turnover],
+    )
+    try:
+        problem.solve(solver=cp.CLARABEL)
+    except cp.SolverError:
+        return None
+    if w.value is None:
+        return None
+    return np.clip(np.asarray(w.value, dtype=float), 0.0, None)
+
+
 def target_weights(
     bl: BlackLitterman,
     base: BaseAllocation,
@@ -309,8 +334,13 @@ def target_weights(
         if sol is not None:
             solutions.append(sol)
     if not solutions:
-        notes.append("keine zulässige Lösung; Zielgewichte = aktuelles Portfolio")
-        stack = np.array([cur])
+        closest = _closest_feasible(sigma, b, cur, caps, turnover)
+        if closest is not None:
+            notes.append("Grenzen nicht gleichzeitig erfüllbar; Schritt Richtung Basis (E-82)")
+            stack = np.array([closest])
+        else:
+            notes.append("keine zulässige Lösung; Zielgewichte = aktuelles Portfolio")
+            stack = np.array([cur])
     else:
         stack = np.array(solutions)
         if len(solutions) < sims:

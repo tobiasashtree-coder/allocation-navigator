@@ -11,6 +11,10 @@ on:
         description: "Basiswaehrung fuer den Bericht (leer = alle unterstuetzten)"
         required: false
         default: ""
+      backtest:
+        description: "Backtest ausfuehren (ja/nein, dauert rund 30 Minuten)"
+        required: false
+        default: "ja"
 
 jobs:
   live:
@@ -50,11 +54,15 @@ jobs:
       - name: Empfehlung
         run: uv run navigator recommend | tee recommend.log
         continue-on-error: true
+      - name: Backtest
+        if: ${{ inputs.backtest != 'nein' }}
+        run: uv run navigator backtest | tee backtest.log
+        continue-on-error: true
       - name: Bericht in die Zusammenfassung schreiben
         if: always()
         shell: bash
         run: |
-          for f in reports/recommend_latest.md reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
+          for f in reports/backtest_latest.md reports/recommend_latest.md reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
             if [ -f "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
           done
       - uses: actions/upload-artifact@v4
