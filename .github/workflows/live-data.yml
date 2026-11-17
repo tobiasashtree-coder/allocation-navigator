@@ -47,11 +47,14 @@ jobs:
       - name: Langfristiger Schuldenzyklus
         run: uv run navigator debt run | tee debt.log
         continue-on-error: true
+      - name: Empfehlung
+        run: uv run navigator recommend | tee recommend.log
+        continue-on-error: true
       - name: Bericht in die Zusammenfassung schreiben
         if: always()
         shell: bash
         run: |
-          for f in reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
+          for f in reports/recommend_latest.md reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
             if [ -f "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
           done
       - uses: actions/upload-artifact@v4
