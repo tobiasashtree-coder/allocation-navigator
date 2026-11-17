@@ -77,7 +77,9 @@ def annualize(series: PitSeries, item: DebtInput, owner: str) -> PitSeries:
             value = float(group["value"].mean())
         year_end = pd.Timestamp(int(year), 12, 31)
         end_known = known_from_rule(
-            pd.DatetimeIndex([year_end]), "D" if item.frequency == "D" else "M", item.publication_lag
+            pd.DatetimeIndex([year_end]),
+            "D" if item.frequency == "D" else "M",
+            item.publication_lag,
         )[0]
         rows.append(
             {
@@ -87,7 +89,9 @@ def annualize(series: PitSeries, item: DebtInput, owner: str) -> PitSeries:
                 "approx": True,
             }
         )
-    return PitSeries(series.key, pd.DataFrame(rows, columns=["obs_date", "value", "known_from", "approx"]))
+    return PitSeries(
+        series.key, pd.DataFrame(rows, columns=["obs_date", "value", "known_from", "approx"])
+    )
 
 
 @dataclass
@@ -330,7 +334,7 @@ class ReferencePool:
     frames: dict[str, pd.DataFrame]  # Bestandteil -> Spalten date, value
 
     def percentile(self, component: str, value: float, when: pd.Timestamp, minimum: int) -> float:
-        """Anteil der bis ``when`` bekannten Referenzwerte unter ``value`` (Mitte bei Gleichstand)."""
+        """Anteil der bis ``when`` bekannten Referenzwerte unter ``value`` (Gleichstand halb)."""
         frame = self.frames.get(component)
         if frame is None or np.isnan(value):
             return float("nan")
@@ -342,7 +346,9 @@ class ReferencePool:
         return (below + 0.5 * equal) / len(known)
 
 
-def build_pool(year_end_values: dict[str, pd.DataFrame], components: Iterable[str]) -> ReferencePool:
+def build_pool(
+    year_end_values: dict[str, pd.DataFrame], components: Iterable[str]
+) -> ReferencePool:
     """Referenzverteilung aus den Jahresendwerten (je Land eine Zeile pro Jahr)."""
     frames: dict[str, pd.DataFrame] = {}
     for component in components:
@@ -356,9 +362,7 @@ def build_pool(year_end_values: dict[str, pd.DataFrame], components: Iterable[st
     return ReferencePool(frames)
 
 
-def score_frame(
-    values: pd.DataFrame, pool: ReferencePool, score: DebtScoreConfig
-) -> pd.DataFrame:
+def score_frame(values: pd.DataFrame, pool: ReferencePool, score: DebtScoreConfig) -> pd.DataFrame:
     """Perzentile (Spalten ``p:<Bestandteil>``) und Score je Stichtag."""
     enabled = {k: c for k, c in score.components.items() if c.enabled}
     out = pd.DataFrame(index=values.index)
@@ -499,7 +503,7 @@ def run_debt_stress(
         thresholds, calibration = calibrate_thresholds(year_end, score)
         fixed = False
 
-    for owner, frame in year_end.items():
+    for frame in year_end.values():
         if not frame.empty:
             frame["phase"] = [phase_for(r, thresholds, score) for _, r in frame.iterrows()]
 

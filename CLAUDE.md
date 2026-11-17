@@ -8,8 +8,8 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 
 - Fertig: **M0**, **M1**, **M2** (Methode A), **M3** (Methode B und Vergleich; Prüfpunkt
   freigegeben am 17.11.2026 mit Variante 2, Marktmerkmale als Veränderung).
-- Angehalten: **M4** (Schuldenzyklus-Overlay) startet erst nach ausdrücklicher Freigabe durch
-  Tobias. Danach M5, M6 und Prüfpunkt nach M6.
+- In Arbeit: **M4** (Schuldenzyklus-Overlay, freigegeben am 17.11.2026). Danach M5, M6 und
+  Prüfpunkt nach M6.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.
@@ -78,3 +78,7 @@ uv run navigator data update --demo && uv run navigator data validate --demo   #
 | `regimes/hmm.py` | HMM mit eigenem Vorwärtsfilter (nur gefiltert), GMM-Gegencheck, Benennung |
 | `regimes/compare.py` | Übereinstimmung, Kreuztabelle, Begründung, Überzeugung |
 | `regimes/method_b.py` | Methode B gesamt und Bericht (`navigator regime run --method both`) |
+| `data/debt.py` | Rohreihen des Schuldenstress-Scores (Schlüssel `debt.*`) |
+| `features/debt_stress.py` | Langfristiger Schuldenzyklus: Score 0–100, Perzentile, Phasen, Kalibrierung |
+| `allocation/overlay.py` | Overlay-Vektoren mit λ je Phase, vorläufige Basis bis M5 |
+| `reporting/debt.py` | Bericht Schuldenzyklus (`navigator debt run`) |

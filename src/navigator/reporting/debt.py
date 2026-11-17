@@ -57,7 +57,9 @@ def _fmt(value: object, pattern: str = "{:.1f}") -> str:
     return str(value)
 
 
-def current_table(config: AppConfig, result: DebtStressResult, asof: pd.Timestamp | None) -> pd.DataFrame:
+def current_table(
+    config: AppConfig, result: DebtStressResult, asof: pd.Timestamp | None
+) -> pd.DataFrame:
     """Stand je Land: Score, gemessene und manuelle Phase, Abstand."""
     current = result.current(asof)
     rows = []
@@ -65,8 +67,16 @@ def current_table(config: AppConfig, result: DebtStressResult, asof: pd.Timestam
         manual = config.debt_cycle.assessments.get(country, {}).get("phase")
         row = current.loc[country] if country in current.index else pd.Series(dtype="object")
         measured = row.get("phase") if not row.empty else None
-        measured = None if measured is None or (isinstance(measured, float) and np.isnan(measured)) else measured
-        years = [v for k, v in row.items() if str(k).endswith(":year") and pd.notna(v)] if not row.empty else []
+        measured = (
+            None
+            if measured is None or (isinstance(measured, float) and np.isnan(measured))
+            else measured
+        )
+        years = (
+            [v for k, v in row.items() if str(k).endswith(":year") and pd.notna(v)]
+            if not row.empty
+            else []
+        )
         rows.append(
             {
                 "Land": country,
@@ -74,7 +84,9 @@ def current_table(config: AppConfig, result: DebtStressResult, asof: pd.Timestam
                 "gemessene Phase": measured or "–",
                 "manuelle Phase": manual or "–",
                 "Abstand": phase_distance(measured, manual),
-                "Bestandteile": int(row.get("components", 0)) if not row.empty and pd.notna(row.get("components")) else 0,
+                "Bestandteile": int(row.get("components", 0))
+                if not row.empty and pd.notna(row.get("components"))
+                else 0,
                 "jüngstes Datenjahr": int(max(years)) if years else None,
             }
         )
@@ -124,7 +136,7 @@ def run_debt(
 
 
 def _history_table(result: DebtStressResult, countries: list[str]) -> pd.DataFrame:
-    years = list(range(1950, 2021, 10)) + [2022, 2024, 2025]
+    years = [*range(1950, 2021, 10), 2022, 2024, 2025]
     rows = {}
     for country in countries:
         frame = result.year_end.get(country, pd.DataFrame())
@@ -136,12 +148,18 @@ def _history_table(result: DebtStressResult, countries: list[str]) -> pd.DataFra
                 continue
             phase = frame.at[stamp, "phase"] if "phase" in frame.columns else None
             score = frame.at[stamp, "score"] if "score" in frame.columns else np.nan
-            cells[str(year)] = "" if phase is None or pd.isna(score) else f"{_fmt(score, '{:.0f}')} {str(phase).split(' ')[0]}"
+            cells[str(year)] = (
+                ""
+                if phase is None or pd.isna(score)
+                else f"{_fmt(score, '{:.0f}')} {str(phase).split(' ')[0]}"
+            )
         rows[country] = cells
     return pd.DataFrame.from_dict(rows, orient="index")
 
 
-def _components_table(config: AppConfig, result: DebtStressResult, asof: pd.Timestamp | None) -> pd.DataFrame:
+def _components_table(
+    config: AppConfig, result: DebtStressResult, asof: pd.Timestamp | None
+) -> pd.DataFrame:
     current = result.current(asof)
     rows = {}
     for name, component in config.debt_cycle.score.components.items():
@@ -163,7 +181,9 @@ def _components_table(config: AppConfig, result: DebtStressResult, asof: pd.Time
     return pd.DataFrame.from_dict(rows, orient="index")
 
 
-def _coverage_table(result: DebtStressResult, countries: list[str], panel: list[str]) -> pd.DataFrame:
+def _coverage_table(
+    result: DebtStressResult, countries: list[str], panel: list[str]
+) -> pd.DataFrame:
     coverage = result.coverage
     if coverage.empty:
         return coverage
@@ -179,7 +199,9 @@ def _coverage_table(result: DebtStressResult, countries: list[str], panel: list[
     return frame.sort_index()
 
 
-def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.Timestamp | None) -> tuple[Path, Path]:
+def write_report(
+    config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.Timestamp | None
+) -> tuple[Path, Path]:
     """Bericht ``reports/debt_latest.md`` und Historie ``reports/debt_history.csv``."""
     paths.reports.mkdir(parents=True, exist_ok=True)
     result, score = run.result, config.debt_cycle.score
@@ -188,7 +210,8 @@ def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.
         lines += ["> **DEMO-DATEN.** Synthetische Reihen; keine Aussage über Märkte.", ""]
     lines += [
         f"Erstellt: {utc_now().isoformat(timespec='seconds')} · Stichtag: "
-        f"{(asof or pd.Timestamp.today()).date()} · Konfigurations-Hash: `{config.config_hash[:12]}`",
+        f"{(asof or pd.Timestamp.today()).date()} · Konfigurations-Hash: "
+        f"`{config.config_hash[:12]}`",
         "",
         "Score 0 bis 100: gewichtetes Mittel der Perzentile aller verfügbaren Bestandteile "
         "gegen die bis zum Stichtag bekannte Verteilung im Referenzpanel (JST-Länder und die "
@@ -215,7 +238,11 @@ def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.
         "",
     ]
     cal = result.calibration
-    status = "festgeschrieben in config/debt_cycle.yaml" if result.thresholds_fixed else "kalibriert, noch nicht festgeschrieben"
+    status = (
+        "festgeschrieben in config/debt_cycle.yaml"
+        if result.thresholds_fixed
+        else "kalibriert, noch nicht festgeschrieben"
+    )
     lines += [
         f"Verwendete Schwellen: **{' | '.join(_fmt(t) for t in result.thresholds)}** ({status}).",
         "",
@@ -231,9 +258,10 @@ def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.
         ]
     lines += [
         "Zusatzregel: Liegt die Staatsverschuldung über dem "
-        f"{score.rules.high_debt_percentile:.0%}-Perzentil und ist die Quote in 5 Jahren um mindestens "
-        f"{-score.rules.deleveraging_pp:.0f} Pp. gesunken (ohne positives r − g) oder die "
-        f"Zentralbankbilanz in 3 Jahren um mindestens {score.rules.monetization_pp:.0f} Pp. des BIP "
+        f"{score.rules.high_debt_percentile:.0%}-Perzentil und ist die Quote in 5 Jahren um "
+        f"mindestens {-score.rules.deleveraging_pp:.0f} Pp. gesunken (ohne positives r − g) "
+        "oder die Zentralbankbilanz in 3 Jahren um mindestens "
+        f"{score.rules.monetization_pp:.0f} Pp. des BIP "
         "gewachsen, gilt „Entschuldung / Monetarisierung“. „Neuordnung“ ist nur manuell setzbar.",
         "",
         "## Episoden-Check (qualitativ)",
@@ -246,10 +274,10 @@ def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.
     if run.overlay is not None:
         overlay = run.overlay
         lines += ["## Wirkung des Overlays auf die Allokation", ""]
-        for entry in overlay.lambdas:
+        for lam in overlay.lambdas:
             lines.append(
-                f"- {COUNTRY_NAMES.get(entry.country, entry.country)}: Phase "
-                f"„{entry.phase or 'unbekannt'}“ ({entry.source}), λ = {_fmt(entry.value, '{:.2f}')}"
+                f"- {COUNTRY_NAMES.get(lam.country, lam.country)}: Phase "
+                f"„{lam.phase or 'unbekannt'}“ ({lam.source}), λ = {_fmt(lam.value, '{:.2f}')}"
             )
         lines += [
             "",
@@ -257,7 +285,8 @@ def write_report(config: AppConfig, paths: ProjectPaths, run: DebtRun, asof: pd.
             f"{config.currency.base}; ab M5 Risikoparität mit Ledoit-Wolf-Kovarianz (7.1).",
             "",
             markdown_table(overlay.table(config), "{:.1f}"),
-            f"Ungesichertes USD-Exposure: ohne Overlay {_fmt(usd_share(overlay.base, config) * 100)} %, "
+            "Ungesichertes USD-Exposure: ohne Overlay "
+            f"{_fmt(usd_share(overlay.base, config) * 100)} %, "
             f"mit Overlay {_fmt(usd_share(overlay.weights, config) * 100)} %"
             + (
                 f"; Obergrenze laut Overlay {_fmt(overlay.usd_cap * 100)} % "

@@ -64,9 +64,7 @@ class OverlayResult:
         return frame
 
 
-def choose_phase(
-    config: AppConfig, country: str, measured: str | None
-) -> tuple[str | None, str]:
+def choose_phase(config: AppConfig, country: str, measured: str | None) -> tuple[str | None, str]:
     """Phase für das Overlay laut ``phase_source`` (manuell, gemessen oder manuell vor gemessen)."""
     manual = config.debt_cycle.assessments.get(country, {}).get("phase")
     source = config.debt_cycle.phase_source
@@ -115,7 +113,9 @@ def apply_overlay(
         lam = entry.value
         vector = config.debt_cycle.overlay_vectors[entry.country]
         if lam <= 0:
-            notes.append(f"{entry.country}: Phase {entry.phase or 'unbekannt'}, λ = 0, kein Overlay")
+            notes.append(
+                f"{entry.country}: Phase {entry.phase or 'unbekannt'}, λ = 0, kein Overlay"
+            )
             continue
         for asset, rule in vector.items():
             kind = rule.get("type")
@@ -131,26 +131,34 @@ def apply_overlay(
                 target = (float(rule["min"]) + float(rule["max"])) / 2.0
                 if before < target:
                     weights[asset] = before + lam * (target - before)
-                reasons[asset] = f"auf {target:.1%} anheben (Spanne {rule['min']:.0%}–{rule['max']:.0%})"
+                reasons[asset] = (
+                    f"auf {target:.1%} anheben (Spanne {rule['min']:.0%}–{rule['max']:.0%})"
+                )
             elif kind == "shift_pp":
                 weights[asset] = max(0.0, before + lam * float(rule["value"]) / 100.0)
                 reasons[asset] = f"{float(rule['value']):+.1f} Pp. × λ"
             elif kind == "lift_to_cap":
-                cap = _cap(config, asset)
-                if cap is None:
+                limit = _cap(config, asset)
+                if limit is None:
                     notes.append(f"{asset}: keine Obergrenze, 'lift_to_cap' übersprungen")
                     continue
-                weights[asset] = before + lam * max(0.0, cap - before)
-                reasons[asset] = f"bis zur Obergrenze {cap:.0%} anheben"
+                weights[asset] = before + lam * max(0.0, limit - before)
+                reasons[asset] = f"bis zur Obergrenze {limit:.0%} anheben"
             elif kind == "shift_to_low_stress":
                 moved = lam * float(rule["share"]) * before
                 receivers = _low_stress_receivers(config, asset, scores, weights)
                 if not receivers:
-                    notes.append(f"{asset}: kein Land mit niedrigerem Schuldenstress, keine Umschichtung")
+                    notes.append(
+                        f"{asset}: kein Land mit niedrigerem Schuldenstress, keine Umschichtung"
+                    )
                     continue
                 weights[asset] = before - moved
                 split = base.reindex(receivers).fillna(0.0)
-                split = split / split.sum() if split.sum() > 0 else pd.Series(1.0 / len(receivers), index=receivers)
+                split = (
+                    split / split.sum()
+                    if split.sum() > 0
+                    else pd.Series(1.0 / len(receivers), index=receivers)
+                )
                 for receiver, share in split.items():
                     weights[receiver] += moved * float(share)
                     reasons[receiver] = f"erhält aus {asset} (niedrigerer Schuldenstress)"
@@ -160,6 +168,12 @@ def apply_overlay(
                 notes.append(f"{asset}: unbekannte Regel {kind!r}")
                 continue
             explicit.add(asset)
+    for asset in weights.index:
+        upper = _cap(config, str(asset))
+        if upper is not None and weights[asset] > upper:
+            weights[asset] = upper
+            reasons.setdefault(str(asset), f"auf die Obergrenze {upper:.0%} begrenzt")
+            explicit.add(str(asset))
     excess = float(weights.sum()) - 1.0
     funders = [a for a in weights.index if a not in explicit and weights[a] > 0]
     pool = float(weights[funders].sum()) if funders else 0.0
@@ -169,11 +183,36 @@ def apply_overlay(
                 weights[asset] -= excess * float(weights[asset]) / pool
                 reasons.setdefault(asset, "finanziert die Verschiebungen (anteilig)")
         else:
-            notes.append("Verschiebungen nicht aus den übrigen Klassen finanzierbar; alle Gewichte skaliert")
+            notes.append(
+                "Verschiebungen nicht aus den übrigen Klassen finanzierbar; alle Gewichte skaliert"
+            )
             weights = weights.clip(lower=0.0)
     weights = weights.clip(lower=0.0)
-    weights = weights / float(weights.sum())
+    weights = enforce_caps(weights / float(weights.sum()), config)
     return OverlayResult(base, weights, lambdas, reasons, usd_cap, notes)
+
+
+def enforce_caps(weights: pd.Series, config: AppConfig) -> pd.Series:
+    """Hält die Obergrenzen der Klassen ein; der Überschuss geht anteilig an die übrigen."""
+    weights = weights.copy()
+    for _ in range(20):
+        capped = False
+        for asset in weights.index:
+            cap = _cap(config, str(asset))
+            if cap is not None and weights[asset] > cap + 1e-12:
+                excess = weights[asset] - cap
+                weights[asset] = cap
+                others = [
+                    a
+                    for a in weights.index
+                    if a != asset and (_cap(config, str(a)) or 1.0) > weights[a] + 1e-12
+                ]
+                if others and weights[others].sum() > 0:
+                    weights[others] += excess * weights[others] / weights[others].sum()
+                capped = True
+        if not capped:
+            break
+    return weights / weights.sum()
 
 
 def _low_stress_receivers(
@@ -212,8 +251,10 @@ def provisional_base(returns: pd.DataFrame, config: AppConfig, window: int = 60)
 
     Das ist eine einfache Näherung der Risikoparität aus 7.1 (ohne Korrelationen innerhalb
     der Körbe). Klassen in mehreren Körben erhalten die Summe ihrer Anteile. Obergrenzen
-    (z. B. Bitcoin 3 %) werden eingehalten, der Rest anteilig verteilt.
+    (z. B. Bitcoin 3 %) werden eingehalten, der Rest anteilig verteilt. Cash bleibt außen
+    vor: bei fast null Volatilität bekäme es sonst nahezu das ganze Gewicht (E-64).
     """
+    returns = returns.drop(columns=[c for c in ("cash",) if c in returns.columns])
     recent = returns.dropna(how="all").iloc[-window:]
     vol = recent.std() * np.sqrt(12)
     weights = pd.Series(0.0, index=returns.columns)
@@ -235,16 +276,4 @@ def provisional_base(returns: pd.DataFrame, config: AppConfig, window: int = 60)
         if name in inv_basket:
             weights = weights.add(w * inv_basket[name] / total, fill_value=0.0)
     weights = weights[weights > 0]
-    for _ in range(10):
-        capped = False
-        for asset in weights.index:
-            cap = _cap(config, str(asset))
-            if cap is not None and weights[asset] > cap + 1e-12:
-                excess = weights[asset] - cap
-                weights[asset] = cap
-                others = [a for a in weights.index if a != asset]
-                weights[others] += excess * weights[others] / weights[others].sum()
-                capped = True
-        if not capped:
-            break
-    return weights / weights.sum()
+    return enforce_caps(weights / weights.sum(), config)

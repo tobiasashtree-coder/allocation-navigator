@@ -386,11 +386,12 @@ def debt_run(
             f"manuell: {row['manuelle Phase']}"
         )
     thresholds = ", ".join(f"{t:.1f}" for t in run.result.thresholds)
-    state = "festgeschrieben" if run.result.thresholds_fixed else "kalibriert, nicht festgeschrieben"
+    state = (
+        "festgeschrieben" if run.result.thresholds_fixed else "kalibriert, nicht festgeschrieben"
+    )
     typer.echo(f"Schwellen [{thresholds}] ({state})")
     for warning in run.warnings:
         typer.echo(f"WARNUNG: {warning}")
     typer.echo(f"Bericht: {md_path}; Historie: {csv_path}")
     if paths.demo:
         typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
-

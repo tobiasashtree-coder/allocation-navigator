@@ -236,8 +236,9 @@ def panel_slice(
 ) -> pd.DataFrame:
     """Zeilen eines Landes aus einem Panel (Land × Jahr), Jahreswerte zum 31.12."""
     if id_column not in table.columns or date_column not in table.columns:
+        present = list(table.columns)[:12]
         raise SeriesNotFoundError(
-            f"Panel ohne Spalten {id_column!r}/{date_column!r} (vorhanden: {list(table.columns)[:12]})"
+            f"Panel ohne Spalten {id_column!r}/{date_column!r} (vorhanden: {present})"
         )
     rows = table[table[id_column].astype(str).str.upper() == country.upper()]
     if rows.empty:

@@ -50,10 +50,10 @@ def debt_series_specs(config: AppConfig) -> list[DebtSeriesSpec]:
         elif item.panel:
             panel = list(dict.fromkeys(score.panel))
             for iso3 in panel:
-                symbol = item.symbol.format(iso2="", iso3=iso3)
+                panel_symbol: str = item.symbol.format(iso2="", iso3=iso3)
                 specs.append(
                     DebtSeriesSpec(
-                        input_key(iso3, name, item), iso3, name, item.source, symbol, item
+                        input_key(iso3, name, item), iso3, name, item.source, panel_symbol, item
                     )
                 )
         else:
