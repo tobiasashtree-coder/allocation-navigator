@@ -31,6 +31,10 @@ app.add_typer(data_app, name="data")
 app.add_typer(config_app, name="config")
 regime_app = typer.Typer(help="Regime-Erkennung nach Methode A und B.", no_args_is_help=True)
 app.add_typer(regime_app, name="regime")
+debt_app = typer.Typer(
+    help="Langfristiger Schuldenzyklus: Score, Phasen, Overlay.", no_args_is_help=True
+)
+app.add_typer(debt_app, name="debt")
 data_app.add_typer(infra_app, name="infra")
 
 DemoOption = Annotated[
@@ -352,3 +356,41 @@ def monthly() -> None:
 
 if __name__ == "__main__":
     app()
+
+
+@debt_app.command("run")
+def debt_run(
+    asof: Annotated[
+        str | None, typer.Option("--asof", help="Stichtag JJJJ-MM-TT (Standard: heute)")
+    ] = None,
+    overlay: Annotated[
+        bool, typer.Option("--overlay/--no-overlay", help="Wirkung auf die Allokation zeigen")
+    ] = True,
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Schuldenstress-Score und Phase je Land, Kalibrierung, Overlay (reports/debt_latest.md)."""
+    import pandas as pd
+
+    from navigator.reporting.debt import run_debt, write_report
+
+    config, paths = _setup(root, demo)
+    stamp = pd.Timestamp(asof) if asof else None
+    run = run_debt(config, paths, stamp, with_overlay=overlay)
+    md_path, csv_path = write_report(config, paths, run, stamp)
+    for country, row in run.current.iterrows():
+        score = row["Score"]
+        shown = "  –  " if pd.isna(score) else f"{score:5.1f}"
+        typer.echo(
+            f"{country}  Score {shown}  gemessen: {row['gemessene Phase']:<32} "
+            f"manuell: {row['manuelle Phase']}"
+        )
+    thresholds = ", ".join(f"{t:.1f}" for t in run.result.thresholds)
+    state = "festgeschrieben" if run.result.thresholds_fixed else "kalibriert, nicht festgeschrieben"
+    typer.echo(f"Schwellen [{thresholds}] ({state})")
+    for warning in run.warnings:
+        typer.echo(f"WARNUNG: {warning}")
+    typer.echo(f"Bericht: {md_path}; Historie: {csv_path}")
+    if paths.demo:
+        typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
+

@@ -14,6 +14,7 @@ from navigator.data.providers.base import (
 )
 from navigator.data.providers.demo import DemoProvider, demo_config
 from navigator.data.providers.fred import FredProvider
+from navigator.data.providers.imf import ImfProvider
 from navigator.data.providers.issuer_nav import IssuerNavProvider
 from navigator.data.providers.licensed import MsciProvider, SipaProvider
 from navigator.data.providers.market import (
@@ -53,6 +54,7 @@ _SIMPLE: dict[str, type[Provider]] = {
     "oecd": OecdProvider,
     "bis": BisProvider,
     "bundesbank": BundesbankProvider,
+    "imf": ImfProvider,
     "yfinance": YahooProvider,
     "tiingo": TiingoProvider,
     "coinmetrics": CoinMetricsProvider,

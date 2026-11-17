@@ -231,6 +231,26 @@ def parse_manual_csv(text: str) -> pd.DataFrame:
     return out
 
 
+def panel_slice(
+    table: pd.DataFrame, country: str, id_column: str, date_column: str
+) -> pd.DataFrame:
+    """Zeilen eines Landes aus einem Panel (Land × Jahr), Jahreswerte zum 31.12."""
+    if id_column not in table.columns or date_column not in table.columns:
+        raise SeriesNotFoundError(
+            f"Panel ohne Spalten {id_column!r}/{date_column!r} (vorhanden: {list(table.columns)[:12]})"
+        )
+    rows = table[table[id_column].astype(str).str.upper() == country.upper()]
+    if rows.empty:
+        raise SeriesNotFoundError(f"Panel enthält das Land {country} nicht")
+    years = pd.to_numeric(rows[date_column], errors="coerce")
+    rows = rows[years.notna()].copy()
+    rows.index = pd.DatetimeIndex(
+        [pd.Timestamp(int(y), 12, 31) for y in years.dropna().astype(int)]
+    )
+    numeric = rows.drop(columns=[id_column, date_column]).apply(pd.to_numeric, errors="coerce")
+    return numeric.sort_index()
+
+
 def pick_column(table: pd.DataFrame, expression: str) -> pd.Series:
     """Wählt eine Spalte (exakt, sonst eindeutiger Teiltreffer); ``A+B`` addiert Spalten."""
     total: pd.Series | None = None
@@ -347,6 +367,9 @@ class StaticProvider(Provider):
                 )
             elif fmt == "excel":
                 table = read_excel_grid(content, spec.get("sheet", 0))
+            elif fmt == "panel_excel":
+                table = pd.read_excel(io.BytesIO(content), sheet_name=spec.get("sheet", 0))
+                table.columns = [str(c).strip() for c in table.columns]
             elif fmt == "nyfed_realtime":
                 table = parse_nyfed_realtime(content)
             elif fmt == "excel_positional":
@@ -370,7 +393,17 @@ class StaticProvider(Provider):
         dataset, column = request.symbol.split(":", 1)
         spec = self._datasets().get(dataset, {})
         table = self._table(dataset)
-        if str(spec.get("format", "")) == "excel":
+        if str(spec.get("format", "")) == "panel_excel":
+            if "@" not in column:
+                raise ProviderError("static: Panel-Symbol muss 'Datensatz:Spalte@Land' sein")
+            column, country = column.split("@", 1)
+            table = panel_slice(
+                table,
+                country,
+                str(spec.get("id_column", "iso")),
+                str(spec.get("date_column", "year")),
+            )
+        elif str(spec.get("format", "")) == "excel":
             table = excel_table(table, column)
         series = pick_column(table, column).dropna()
         value_type = str(spec.get("value_type", "returns"))

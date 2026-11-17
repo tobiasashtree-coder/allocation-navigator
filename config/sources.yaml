@@ -60,6 +60,14 @@ sources:
     options:
       url_template: "https://stats.bis.org/api/v1/data/{flow}/{key}"
       params: {format: csv}
+  imf:
+    priority: 20
+    rate_limit_per_min: 30
+    license: IMF, freie Nutzung mit Quellenangabe (Copyright and Usage)
+    license_url: https://www.imf.org/en/About/copyright-and-terms
+    note: DataMapper-API; FPP (lange Fiskalhistorie) und WEO/Fiscal Monitor (jüngste Jahre).
+    options:
+      api_url: https://www.imf.org/external/datamapper/api/v1
   bundesbank:
     priority: 8                      # vor FRED: Monatsendstände statt Monatsdurchschnitte
     rate_limit_per_min: 30
@@ -219,9 +227,18 @@ sources:
           value_type: level
         jst:
           url: https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx
-          format: excel
+          format: panel_excel
           sheet: 0
-          note: Jordà-Schularick-Taylor; wird ab M4 für die Kalibrierung des Schuldenzyklus genutzt.
+          id_column: iso
+          date_column: year
+          value_type: level
+          license: Jordà-Schularick-Taylor Macrohistory Database, freie Nutzung mit Quellenangabe, kein Weiterverkauf
+          note: Referenzpanel und Kalibrierung des Schuldenzyklus (M4); fehlt der Download, Datei als manual/jst.xlsx ablegen.
+        gold_reserves_manual:
+          format: manual_csv
+          path: manual/gold_reserves_manual.csv
+          value_type: level
+          note: Gold-Anteil an den Weltreserven in Prozent (World Gold Council), Spalten date,share
 
   # ---------------------------------- kostenpflichtig: vorbereitet, deaktiviert
   eodhd:

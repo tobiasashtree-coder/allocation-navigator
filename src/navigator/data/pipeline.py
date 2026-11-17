@@ -19,6 +19,7 @@ import pandas as pd
 
 from navigator.config import AppConfig, PublicationLag, source_base
 from navigator.data.cache import SeriesCache
+from navigator.data.debt import debt_series_specs
 from navigator.data.pit import PitStore
 from navigator.data.providers import (
     Provider,
@@ -178,6 +179,20 @@ def collect_specs(config: AppConfig) -> list[RawSpec]:
                 frequency=indicator.frequency,
                 lag_months=indicator.publication_lag.months,
                 lag_days=indicator.publication_lag.days,
+            )
+        )
+    for debt in debt_series_specs(config):
+        specs.append(
+            _spec(
+                debt.key,
+                "level" if debt.item.frequency == "D" else "macro",
+                {debt.source: debt.symbol},
+                optional=True,
+                pit=True,
+                frequency=debt.item.frequency,
+                lag_months=debt.item.publication_lag.months,
+                lag_days=debt.item.publication_lag.days,
+                historical=debt.item.historical,
             )
         )
     return specs

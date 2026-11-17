@@ -21,6 +21,10 @@ lambda_by_phase:
 
 overlay_strength: 1.0           # Standardeinstellung „hohe Wirkung"
 
+# Welche Phase das Overlay skaliert: die manuelle Einschätzung, wo gepflegt, sonst die
+# gemessene Phase (Entscheidung E-60).
+phase_source: manual_then_measured
+
 # Manuelle Einschätzung je Land mit Datum, Quelle, Begründung und Gegenposition (6.3).
 assessments:
   US:
@@ -53,12 +57,141 @@ overlay_vectors:
     infrastructure: {type: shift_pp, value: 2.5}        # Spezifikation: +2 bis +3
     bond_us_long: {type: shift_pp, value: -6.5}         # Spezifikation: -5 bis -8
     equity_us: {type: shift_to_low_stress, share: 0.25} # Anteil: Entwurf, nicht beziffert
+    # Gold: Ziel ist die Mitte der Spanne (12,5 %), wenn die Basis darunter liegt.
     bitcoin: {type: lift_to_cap}
     unhedged_usd_cap: {type: cap, value: 0.30}          # Entwurf, nicht beziffert
 
-# Messbarer Schuldenstress-Score je Land, 0 bis 100 (6.2). Schwellen werden in M4 mit
-# der Jordà-Schularick-Taylor-Datenbank kalibriert und dann hier festgeschrieben.
+# Aktienklassen und die Länder, deren Schuldenstress für „shift_to_low_stress" zählt.
+equity_countries:
+  equity_us: [US]
+  equity_europe: [DE, FR, IT, GB]
+  equity_japan: [JP]
+  equity_em: [CN]
+
+# Messbarer Schuldenstress-Score je Land, 0 bis 100 (6.2). Jährliche Werte; ein Jahreswert
+# gilt erst nach der Veröffentlichungsverzögerung als bekannt (Fiskaldaten Ende April des
+# Folgejahres). Jeder Bestandteil wird als Perzentil gegen die bis zum Stichtag bekannte
+# Verteilung eines Referenzpanels bewertet (JST-Länder plus die Länder des Tools).
 score:
   countries: [US, DE, FR, IT, JP, GB, CN]
+  iso3: {US: USA, DE: DEU, FR: FRA, IT: ITA, JP: JPN, GB: GBR, CN: CHN}
+  # Länder der Jordà-Schularick-Taylor-Datenbank (Referenzpanel, nur JST-Reihen).
+  panel: [AUS, BEL, CAN, CHE, DEU, DNK, ESP, FIN, FRA, GBR, IRL, ITA, JPN, NLD, NOR, PRT, SWE, USA]
+  start: "1960-01"
+  panel_start_year: 1870
+  min_components: 3             # weniger verfügbare Bestandteile: kein Score
+  min_reference: 30             # Mindestzahl Referenzwerte je Bestandteil
   warn_if_phases_apart: 1
-  thresholds: null
+
+  inputs:
+    # ---------------------------------------------------------- IMF (DataMapper, frei)
+    debt_fm: {source: imf, symbol: "G_XWDG_G01_GDP_PT/{iso3}", note: "Fiscal Monitor, Bruttoschulden % BIP"}
+    debt_weo: {source: imf, symbol: "GGXWDG_NGDP/{iso3}", note: "WEO, Bruttoschulden % BIP"}
+    debt_fpp: {source: imf, symbol: "d/{iso3}", historical: true, note: "Public Finances in Modern History"}
+    primary_balance_fm: {source: imf, symbol: "GGXONLB_G01_GDP_PT/{iso3}"}
+    net_lending_weo: {source: imf, symbol: "GGXCNL_NGDP/{iso3}"}
+    revenue_fm: {source: imf, symbol: "GGR_G01_GDP_PT/{iso3}"}
+    primary_balance_fpp: {source: imf, symbol: "pb/{iso3}", historical: true}
+    interest_fpp: {source: imf, symbol: "ie/{iso3}", historical: true}
+    revenue_fpp: {source: imf, symbol: "rev/{iso3}", historical: true}
+    real_rate_fpp: {source: imf, symbol: "rltir/{iso3}", historical: true}
+    real_growth_fpp: {source: imf, symbol: "rgc/{iso3}", historical: true}
+    real_growth_weo: {source: imf, symbol: "NGDP_RPCH/{iso3}"}
+    inflation_weo: {source: imf, symbol: "PCPIPCH/{iso3}"}
+    # ---------------------------------------------------------- Zinsen, Notenbank (FRED)
+    long_rate:
+      source: fred
+      frequency: M
+      publication_lag: {months: 1}
+      symbols_by_country: {US: IRLTLT01USM156N, DE: IRLTLT01DEM156N, FR: IRLTLT01FRM156N, IT: IRLTLT01ITM156N, JP: IRLTLT01JPM156N, GB: IRLTLT01GBM156N}
+      countries: [US, DE, FR, IT, JP, GB]
+      note: OECD-Langfristzinsen über FRED (Monatsmittel)
+    term_premium:
+      source: fred
+      symbol: THREEFYTP10
+      countries: [US]
+      frequency: D
+      publication_lag: {days: 1}
+      note: Kim-Wright statt ACM (ACM nicht frei als Reihe abrufbar, Entscheidung E-61)
+    cb_assets:
+      source: fred
+      symbol: WALCL
+      countries: [US]
+      frequency: D
+      aggregate: last
+      scale: 0.001                # Mio. USD -> Mrd. USD
+      publication_lag: {days: 7}
+    cb_assets_m:
+      source: fred
+      symbol: JPNASSETS
+      countries: [JP]
+      frequency: M
+      aggregate: last
+      scale: 0.1                  # 100 Mio. Yen -> Mrd. Yen
+      publication_lag: {months: 1}
+      note: Bank of Japan, Bilanzsumme (Einheit im Lauf geprüft, siehe Bericht)
+    gdp_nominal:
+      source: fred
+      symbols_by_country: {US: GDP, JP: JPNNGDP}
+      countries: [US, JP]
+      frequency: Q
+      publication_lag: {months: 1}
+      note: Nominales BIP in Mrd. Landeswährung, Jahresrate (Einheit im Lauf geprüft)
+    # ---------------------------------------------------------- BIS
+    credit_gap: {source: bis, symbol: "WS_CREDIT_GAP/Q.{iso2}.P.A.C", frequency: Q, aggregate: last, publication_lag: {months: 6}}
+    dsr: {source: bis, symbol: "WS_DSR/Q.{iso2}.P", frequency: Q, publication_lag: {months: 6}}
+    eer_broad: {source: bis, symbol: "WS_EER/M.N.B.{iso2}", frequency: M, publication_lag: {months: 1}}
+    eer_narrow: {source: bis, symbol: "WS_EER/M.N.N.{iso2}", frequency: M, publication_lag: {months: 1}}
+    # ---------------------------------------------------------- weltweit
+    gold_reserve_share:
+      source: static
+      symbol: "gold_reserves_manual:share"
+      global_series: true
+      note: >-
+        Gold-Anteil an den Währungsreserven weltweit (World Gold Council). Kein frei
+        lizenzierter automatischer Abruf; Datei von Hand ablegen (Entscheidung E-62).
+    # ---------------------------------------------------------- JST (Referenzpanel)
+    jst_debtgdp: {source: static, symbol: "jst:debtgdp@{iso3}", panel: true, historical: true, scale: 100}
+    jst_revenue: {source: static, symbol: "jst:revenue@{iso3}", panel: true, historical: true}
+    jst_expenditure: {source: static, symbol: "jst:expenditure@{iso3}", panel: true, historical: true}
+    jst_gdp: {source: static, symbol: "jst:gdp@{iso3}", panel: true, historical: true}
+    jst_ltrate: {source: static, symbol: "jst:ltrate@{iso3}", panel: true, historical: true}
+    jst_tloans: {source: static, symbol: "jst:tloans@{iso3}", panel: true, historical: true}
+
+  # Bestandteile (Formeln in features/debt_stress.py). direction -1: niedrig heißt Stress.
+  components:
+    debt_gdp: {label: "Staatsverschuldung % BIP"}
+    debt_change_5y: {label: "Veränderung der Staatsverschuldung über 5 Jahre"}
+    interest_revenue: {label: "Zinsausgaben % der Staatseinnahmen"}
+    r_minus_g: {label: "Zins minus nominales Wachstum (3-Jahres-Mittel)"}
+    primary_deficit: {label: "Primärdefizit % BIP"}
+    term_premium: {label: "Laufzeitprämie 10J."}
+    cb_assets_gdp: {label: "Zentralbankbilanz % BIP"}
+    gold_reserve_share: {label: "Gold-Anteil an den Weltreserven"}
+    fx_change_5y: {label: "Handelsgewichteter Wechselkurs, Veränderung 5 Jahre", direction: -1}
+    private_credit_gap: {label: "Private Kredit/BIP-Lücke"}
+    debt_service_ratio: {label: "Schuldendienstquote privat"}
+
+  # Phasen, die nicht allein aus der Höhe des Scores folgen (Entwurf, a priori festgelegt).
+  rules:
+    high_debt_percentile: 0.6     # Staatsschulden im oberen Teil der Referenzverteilung
+    deleveraging_pp: -10.0        # Schuldenquote über 5 Jahre um mindestens 10 Pp. gesunken
+    monetization_pp: 10.0         # Zentralbankbilanz über 3 Jahre um mindestens 10 Pp. des BIP gewachsen
+
+  # Schwellen gesund | Aufbau | Übertreibung | Spätphase aus Quantilen der Score-Verteilung
+  # im Referenzpanel bis end_year (Quantile a priori festgelegt, Entscheidung E-63).
+  calibration:
+    quantiles: [0.35, 0.60, 0.80]
+    end_year: 2020
+  thresholds: null              # nach der Kalibrierung mit echten Daten hier festschreiben
+
+  # Episoden zur qualitativen Plausibilisierung (Jahresende; Fiskaldaten des Vorjahres).
+  episodes:
+    - {country: US, start: 1947, end: 1960, expected: ["Entschuldung / Monetarisierung"], note: "Finanzielle Repression nach 1945"}
+    - {country: GB, start: 1947, end: 1975, expected: ["Entschuldung / Monetarisierung"], note: "Abbau der Kriegsschulden"}
+    - {country: DE, start: 1955, end: 1970, expected: [gesund, Aufbau], note: "Wirtschaftswunder, niedrige Schulden"}
+    - {country: JP, start: 1993, end: 2012, expected: [Übertreibung, "Spätphase (Finanzierungsstress)"], note: "Nach der Blase"}
+    - {country: JP, start: 2014, end: 2024, expected: ["Entschuldung / Monetarisierung"], note: "QQE und Zinskurvensteuerung"}
+    - {country: IT, start: 2011, end: 2013, expected: ["Spätphase (Finanzierungsstress)"], note: "Euro-Schuldenkrise"}
+    - {country: US, start: 2004, end: 2007, expected: [Aufbau, Übertreibung], note: "Privater Kreditboom"}
+    - {country: US, start: 2023, end: 2025, expected: ["Spätphase (Finanzierungsstress)"], note: "Dalio 2026"}
