@@ -191,12 +191,26 @@ class PitStore:
     def _path(self, key: str) -> Path:
         return self.root / f"{safe_name(key)}.parquet"
 
-    def load(self, key: str) -> PitSeries | None:
-        """Lädt eine Reihe oder ``None``."""
+    def load(self, key: str, origin: str | None = None) -> PitSeries | None:
+        """Lädt eine Reihe oder ``None``.
+
+        Mit ``origin`` (``Quelle:Symbol``) nur, wenn die Reihe aus genau dieser Quelle stammt;
+        so werden Altbestände einer früher konfigurierten Quelle nie verwendet.
+        """
         path = self._path(key)
         if not path.exists():
             return None
+        if origin is not None and self.origin(key) != origin:
+            return None
         return PitSeries(key, pd.read_parquet(path))
+
+    def _origin_path(self, key: str) -> Path:
+        return self.root / f"{safe_name(key)}.origin"
+
+    def origin(self, key: str) -> str | None:
+        """Quelle und Symbol, aus denen die gespeicherte Reihe stammt (falls bekannt)."""
+        path = self._origin_path(key)
+        return path.read_text(encoding="utf-8").strip() if path.exists() else None
 
     def save(self, series: PitSeries) -> None:
         """Speichert eine Reihe."""
@@ -210,16 +224,26 @@ class PitStore:
         frequency: str,
         lag: PublicationLag,
         fetched_at: pd.Timestamp,
+        origin: str | None = None,
     ) -> PitSeries:
-        """Übernimmt einen Abruf: Vintages ersetzen den Stand, sonst wird ergänzt."""
+        """Übernimmt einen Abruf: Vintages ersetzen den Stand, sonst wird ergänzt.
+
+        Stammt der Abruf aus einer anderen Quelle als der gespeicherte Stand (``origin``),
+        wird die Reihe neu aufgebaut: Abweichungen zwischen Quellen sind keine Revisionen
+        (E-67).
+        """
         if "known_from" in frame.columns:
             series = from_vintages(key, frame, frequency, lag)
         else:
             existing = self.load(key)
+            if existing is not None and origin is not None and self.origin(key) != origin:
+                existing = None
             series = (
                 from_lagged(key, frame, frequency, lag)
                 if existing is None
                 else merge_fetch(existing, frame, frequency, lag, fetched_at)
             )
         self.save(series)
+        if origin is not None:
+            self._origin_path(key).write_text(origin, encoding="utf-8")
         return series

@@ -254,7 +254,14 @@ def _fetch_spec(
             )
             result.status = "veraltet" if meta.stale else ("ok" if index == 0 else "ersatzquelle")
             if spec.pit:
-                pit.update(spec.key, frame, spec.frequency, spec.lag(), pd.Timestamp(now))
+                pit.update(
+                    spec.key,
+                    frame,
+                    spec.frequency,
+                    spec.lag(),
+                    pd.Timestamp(now),
+                    origin=f"{name}:{symbol}",
+                )
             if not (spec.cross_check or all_sources):
                 break
         else:

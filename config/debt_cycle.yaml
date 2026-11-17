@@ -143,7 +143,7 @@ score:
     # Effektive Wechselkurse der BIS über FRED (Abruf direkt bei der BIS lieferte für alle
     # Länder dieselbe Reihe, E-66).
     eer_broad: {source: fred, symbol: "NB{iso2}BIS", frequency: M, publication_lag: {months: 1}}
-    eer_narrow: {source: fred, symbol: "NN{iso2}BIS", frequency: M, publication_lag: {months: 1}}
+    eer_narrow: {source: fred, symbol: "NN{iso2}BIS", countries: [US, DE, FR, IT, JP, GB], frequency: M, publication_lag: {months: 1}}
     # ---------------------------------------------------------- weltweit
     gold_reserve_share:
       source: static

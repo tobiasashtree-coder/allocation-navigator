@@ -150,14 +150,21 @@ def load_owner_inputs(
     for name, item in score.inputs.items():
         if item.panel:
             key = input_key(iso3, name, item)
+            symbol: str | None = item.symbol.format(iso2="", iso3=iso3)
         elif panel_only:
             continue
         elif item.global_series:
             key = input_key("", name, item)
+            symbol = item.symbol
         else:
-            if not item.symbol_for(owner, iso3):
+            symbol = item.symbol_for(owner, iso3)
+            if not symbol:
                 continue
             key = input_key(owner, name, item)
+        # Nur Bestände aus der konfigurierten Quelle; ältere ohne Herkunft gelten weiter.
+        stored = store.origin(key)
+        if stored is not None and stored != f"{item.source}:{symbol}":
+            continue
         series = store.load(key)
         if series is None or series.frame.empty:
             continue

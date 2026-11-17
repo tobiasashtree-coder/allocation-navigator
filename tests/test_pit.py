@@ -139,3 +139,21 @@ def test_no_lookahead_in_as_of(seed: int) -> None:
         perturbed = PitSeries("x", perturb_frame_after(frame, when, rng))
         assert not perturbed.frame.equals(original.frame)
         pd.testing.assert_series_equal(original.as_of(when), perturbed.as_of(when))
+
+
+def test_source_change_rebuilds_series(tmp_path: Path) -> None:
+    """Wechselt die Quelle, gelten Unterschiede nicht als Revision (E-67)."""
+    from navigator.config import PublicationLag
+    from navigator.data.pit import PitStore
+
+    store = PitStore(tmp_path)
+    dates = pd.date_range("2020-01-01", periods=6, freq="MS")
+    lag = PublicationLag(months=1)
+    first = pd.DataFrame({"obs_date": dates, "value": [1.0] * 6})
+    store.update("k", first, "M", lag, pd.Timestamp("2021-01-01"), origin="bis:A")
+    second = pd.DataFrame({"obs_date": dates, "value": [2.0] * 6})
+    series = store.update("k", second, "M", lag, pd.Timestamp("2022-01-01"), origin="fred:B")
+    assert series.frame["obs_date"].is_unique
+    assert (series.as_of(pd.Timestamp("2021-06-01")) == 2.0).all()
+    assert store.origin("k") == "fred:B"
+    assert store.load("k", origin="bis:A") is None
