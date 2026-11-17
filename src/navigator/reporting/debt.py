@@ -113,6 +113,7 @@ def run_debt(
                 f"„{row['gemessene Phase']}“ weicht um {int(distance)} Phasen von der manuellen "
                 f"Einschätzung „{row['manuelle Phase']}“ ab."
             )
+    warnings += [f"Daten: {issue}" for issue in result.issues]
     if not result.thresholds_fixed:
         warnings.append(
             "Phasenschwellen sind noch nicht in config/debt_cycle.yaml festgeschrieben; "
@@ -154,7 +155,7 @@ def _history_table(result: DebtStressResult, countries: list[str]) -> pd.DataFra
                 else f"{_fmt(score, '{:.0f}')} {str(phase).split(' ')[0]}"
             )
         rows[country] = cells
-    return pd.DataFrame.from_dict(rows, orient="index")
+    return pd.DataFrame.from_dict(rows, orient="index").rename_axis("Land")
 
 
 def _components_table(
@@ -178,7 +179,7 @@ def _components_table(
                 shown += f" {int(year)}"
             cells[country] = shown
         rows[component.label] = cells
-    return pd.DataFrame.from_dict(rows, orient="index")
+    return pd.DataFrame.from_dict(rows, orient="index").rename_axis("Bestandteil")
 
 
 def _coverage_table(
@@ -192,11 +193,11 @@ def _coverage_table(
         owner = str(row["owner"])
         if owner not in countries and owner not in ("USA", "DEU"):
             continue
-        cell = f"{row['first']}–{row['last']} ({_fmt(row['median'])})"
+        cell = f"{row['first']}–{row['last']} ({_fmt(row['median'])}; {_fmt(row['last_value'])})"
         rows.setdefault(str(row["input"]), {})[owner] = cell
     order = [c for c in countries] + [c for c in ("USA", "DEU") if c in panel]
     frame = pd.DataFrame.from_dict(rows, orient="index").reindex(columns=order).fillna("")
-    return frame.sort_index()
+    return frame.sort_index().rename_axis("Rohreihe")
 
 
 def write_report(
@@ -299,7 +300,7 @@ def write_report(
         if overlay.notes:
             lines += [f"- {n}" for n in overlay.notes] + [""]
     lines += [
-        "## Datenabdeckung (erstes–letztes Jahr, Median)",
+        "## Datenabdeckung (erstes–letztes Jahr, Median; letzter Wert)",
         "",
         markdown_table(_coverage_table(result, score.countries, score.panel)),
         "Quellen: IMF DataMapper (WEO, Fiscal Monitor, Public Finances in Modern History), "

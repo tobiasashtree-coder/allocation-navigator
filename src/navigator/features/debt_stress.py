@@ -429,6 +429,7 @@ class DebtStressResult:
     calibration: pd.DataFrame
     coverage: pd.DataFrame
     panel_owners: list[str]
+    issues: list[str] = field(default_factory=list)
 
     def current(self, asof: pd.Timestamp | None = None) -> pd.DataFrame:
         """Stand je Land zum Stichtag (Standard: letzter Monat)."""
@@ -484,6 +485,7 @@ def run_debt_stress(
     inputs: dict[str, OwnerInputs] = {c: load_owner_inputs(store, score, c) for c in targets}
     for iso in panel_owners:
         inputs[iso] = load_owner_inputs(store, score, iso, panel_only=True)
+    issues = identical_inputs(inputs, score)
 
     ends = year_ends(score.panel_start_year, end)
     year_values = {owner: owner_values(item, ends) for owner, item in inputs.items()}
@@ -529,6 +531,7 @@ def run_debt_stress(
                     "first": int(latest.index.min().year) if not latest.empty else None,
                     "last": int(latest.index.max().year) if not latest.empty else None,
                     "median": float(latest.median()) if not latest.empty else None,
+                    "last_value": float(latest.iloc[-1]) if not latest.empty else None,
                 }
             )
     return DebtStressResult(
@@ -539,7 +542,45 @@ def run_debt_stress(
         calibration=calibration,
         coverage=pd.DataFrame(coverage_rows),
         panel_owners=panel_owners,
+        issues=issues,
     )
+
+
+def identical_inputs(inputs: dict[str, OwnerInputs], score: DebtScoreConfig) -> list[str]:
+    """Meldet länderspezifische Rohreihen, die bei mehreren Ländern identisch sind.
+
+    Gleiche Werte für verschiedene Länder deuten auf einen Abruffehler (z. B. eine Quelle,
+    die das Land im Schlüssel ignoriert). Regel 10: nie stillschweigend; die Warnung steht im
+    Bericht. Die Reihen werden nicht verworfen, denn die Prüfung nutzt die ganze Historie und
+    wäre als Eingriff in die Berechnung ein Look-ahead (Regel 1); Abhilfe über die Konfiguration.
+    Weltweite Reihen sind ausgenommen.
+    """
+    issues = []
+    for name, item in score.inputs.items():
+        if item.global_series:
+            continue
+        seen: dict[bytes, str] = {}
+        duplicates: set[str] = set()
+        for owner, data in inputs.items():
+            series = data.series.get(name)
+            if series is None:
+                continue
+            latest = series.latest()
+            if len(latest) < 5:
+                continue
+            fingerprint = (
+                latest.round(6).to_numpy().tobytes() + latest.index.year.to_numpy().tobytes()
+            )
+            if fingerprint in seen:
+                duplicates.update({owner, seen[fingerprint]})
+            else:
+                seen[fingerprint] = owner
+        if duplicates:
+            issues.append(
+                f"{name}: identische Werte für {', '.join(sorted(duplicates))}; "
+                "vermutlich Abruffehler, Quelle prüfen"
+            )
+    return issues
 
 
 def phase_distance(a: str | None, b: str | None) -> int | None:

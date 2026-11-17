@@ -248,3 +248,23 @@ def test_no_lookahead_in_debt_stress(
         pd.testing.assert_frame_equal(ya[ya.index <= stamp], yb[yb.index <= stamp])
     later = original.monthly["US"]["score"]
     assert not later.equals(perturbed.monthly["US"]["score"]), "Gegenprobe: danach verschieden"
+
+
+def test_identical_country_series_are_reported(config: AppConfig) -> None:
+    from navigator.features.debt_stress import OwnerInputs, identical_inputs
+
+    years = pd.date_range("2000-12-31", periods=10, freq="YE")
+
+    def pit(values: np.ndarray) -> PitSeries:
+        frame = pd.DataFrame(
+            {"obs_date": years, "value": values, "known_from": years, "approx": True}
+        )
+        return PitSeries("x", frame)
+
+    same = np.arange(10, dtype=float)
+    inputs = {
+        "US": OwnerInputs("US", {"eer_broad": pit(same), "dsr": pit(same + 1)}),
+        "DE": OwnerInputs("DE", {"eer_broad": pit(same), "dsr": pit(same + 2)}),
+    }
+    issues = identical_inputs(inputs, config.debt_cycle.score)
+    assert len(issues) == 1 and "eer_broad" in issues[0]
