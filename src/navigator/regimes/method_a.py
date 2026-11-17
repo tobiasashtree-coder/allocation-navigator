@@ -163,6 +163,25 @@ def regime_spans(regime: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def phase_spans(phase: pd.Series) -> pd.DataFrame:
+    """Zusammenhängende Abschnitte gleicher Schuldenzyklus-Phase."""
+    clean = phase.dropna()
+    if clean.empty:
+        return pd.DataFrame(columns=["von", "bis", "Monate", "Phase"])
+    group = (clean != clean.shift()).cumsum()
+    return pd.DataFrame(
+        [
+            {
+                "von": part.index[0].strftime("%Y-%m"),
+                "bis": part.index[-1].strftime("%Y-%m"),
+                "Monate": len(part),
+                "Phase": PHASE_LABELS[part.iloc[0]],
+            }
+            for _, part in clean.groupby(group)
+        ]
+    )
+
+
 def write_report(
     config: AppConfig, paths: ProjectPaths, result: MethodAResult, when: pd.Timestamp | None
 ) -> tuple[Path, Path]:
@@ -179,7 +198,10 @@ def write_report(
         "",
         "## Aktueller Stand",
         "",
-        markdown_table(pd.DataFrame([state]).T.rename(columns={0: "Wert"}), "{:+.2f}"),
+        markdown_table(
+            pd.DataFrame({"Größe": list(state), "Wert": list(state.values())}).set_index("Größe"),
+            "{:+.2f}",
+        ),
     ]
     if stamp is not None:
         lines += [
@@ -197,6 +219,9 @@ def write_report(
         "## Regime-Abschnitte (USA)",
         "",
         markdown_table(regime_spans(result.regimes["US"]["regime"])),
+        "## Schuldenzyklus USA (Abschnitte)",
+        "",
+        markdown_table(phase_spans(result.credit["phase"])),
         "## Regime-Abschnitte (Eurozone)",
         "",
         markdown_table(regime_spans(result.regimes["EA"]["regime"])),

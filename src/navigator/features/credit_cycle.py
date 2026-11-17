@@ -11,8 +11,10 @@ Prozentpunkte):
   ``credit_trend_years`` Jahre.
 
 Die Phasen und Schwellen stehen in ``config/regime_map.yaml`` (Abschnitt ``credit_cycle``);
-die Prüfreihenfolge ist Kontraktion, späte, frühe, sonst mittlere Expansion. Ein
-Phasenwechsel zählt nach ``confirm_months`` Monaten in Folge.
+eine Phase gilt, wenn mindestens zwei ihrer drei typischen Signale aus der Tabelle in 4.3
+vorliegen. Prüfreihenfolge: Kontraktion, späte, frühe, sonst mittlere Expansion. Ein
+Phasenwechsel zählt nach ``confirm_months`` Monaten in Folge. Zinskurve und Spread kommen
+aus Tagesreihen, davor aus Monatsdurchschnitten (ab 1953).
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import pandas as pd
 
 from navigator.config import CreditCycleRules
 from navigator.data.pit import PitStore
-from navigator.features.scores import pit_values
+from navigator.features.scores import TransformFn, derived_series, pit_values
 
 PHASES = ("early", "mid", "late", "contraction")
 PHASE_LABELS = {
@@ -33,12 +35,30 @@ PHASE_LABELS = {
 }
 
 
-def _load(store: PitStore, key: str, dates: pd.DatetimeIndex, frequency: str, func) -> pd.Series:  # type: ignore[no-untyped-def]
-    series = store.load(f"indicator.{key}")
+def _load(
+    store: PitStore, key: str, dates: pd.DatetimeIndex, frequency: str, func: TransformFn
+) -> pd.Series:
+    if key == "us_curve_long":
+        series = derived_series(store, "us_gs10", "us_tb3ms", "M")
+    else:
+        series = store.load(f"indicator.{key}")
     if series is None:
         return pd.Series(np.nan, index=dates)
     values, _ = pit_values(series, dates, frequency, func)
     return values
+
+
+def _daily_or_monthly(
+    store: PitStore,
+    daily: str,
+    monthly: str,
+    dates: pd.DatetimeIndex,
+    func: TransformFn,
+) -> pd.Series:
+    """Tagesreihe, wo vorhanden; davor die längere Monatsreihe."""
+    return _load(store, daily, dates, "D", func).combine_first(
+        _load(store, monthly, dates, "M", func)
+    )
 
 
 def credit_inputs(
@@ -83,20 +103,27 @@ def credit_inputs(
             "neutral_rate": neutral,
             "neutral_source": np.where(rstar.notna(), "r* (LW)", "Ersatz: Ø 10 J."),
             "real_gap": real - neutral,
-            "curve": _load(store, "us_curve_10y3m", dates, "D", same),
-            "spread": _load(store, "us_credit_spread", dates, "D", same),
-            "spread_change_6m": _load(store, "us_credit_spread", dates, "D", diff6),
-            "spread_median_10y": _load(store, "us_credit_spread", dates, "D", spread_median),
+            "curve": _daily_or_monthly(store, "us_curve_10y3m", "us_curve_long", dates, same),
+            "spread": _daily_or_monthly(
+                store, "us_credit_spread", "us_credit_spread_long", dates, same
+            ),
+            "spread_change_6m": _daily_or_monthly(
+                store, "us_credit_spread", "us_credit_spread_long", dates, diff6
+            ),
+            "spread_median_10y": _daily_or_monthly(
+                store, "us_credit_spread", "us_credit_spread_long", dates, spread_median
+            ),
             "credit_impulse": _load(store, "us_bank_credit", dates, "D", impulse),
         },
         index=dates,
     )
 
 
-def raw_phase(row: pd.Series, rules: CreditCycleRules) -> str | None:
-    """Phase eines Monats nach den dokumentierten Schwellen (ohne Bestätigungsregel)."""
-    if pd.isna(row["policy_rate"]) or pd.isna(row["real_gap"]):
-        return None
+def phase_signals(row: pd.Series, rules: CreditCycleRules) -> dict[str, int]:
+    """Anzahl erfüllter typischer Signale je Phase laut Tabelle in Abschnitt 4.3.
+
+    Fehlende Eingaben zählen als nicht erfüllt.
+    """
 
     def gt(value: float, threshold: float) -> bool:
         return bool(pd.notna(value) and value > threshold)
@@ -104,26 +131,41 @@ def raw_phase(row: pd.Series, rules: CreditCycleRules) -> str | None:
     def lt(value: float, threshold: float) -> bool:
         return bool(pd.notna(value) and value < threshold)
 
-    widening = gt(row["spread_change_6m"], rules.contraction_spread_widening)
-    cutting = lt(row["policy_change_6m"], -rules.contraction_policy_cut)
-    credit_falling = lt(row["credit_impulse"], 0.0)
-    if widening and (cutting or credit_falling):
-        return "contraction"
-    tight_spread = (
-        pd.isna(row["spread"])
-        or pd.isna(row["spread_median_10y"])
-        or (row["spread"] < row["spread_median_10y"])
+    tight = bool(
+        pd.notna(row["spread"])
+        and pd.notna(row["spread_median_10y"])
+        and row["spread"] < row["spread_median_10y"]
     )
-    restrictive = gt(row["real_gap"], rules.late_real_gap_min)
-    if restrictive and lt(row["curve"], rules.late_curve_max) and tight_spread:
-        return "late"
-    eased = lt(row["policy_change_12m"], -rules.early_policy_cut_12m)
-    loose = lt(row["real_gap"], rules.early_real_gap_max) and gt(
-        row["curve"], rules.early_curve_min
-    )
-    not_widening = pd.isna(row["spread_change_6m"]) or row["spread_change_6m"] <= 0.0
-    if (eased or loose) and not_widening:
-        return "early"
+    return {
+        # Spreads weiten sich, Leitzinssenkungen beginnen, Kreditwachstum fällt
+        "contraction": int(gt(row["spread_change_6m"], rules.contraction_spread_widening))
+        + int(lt(row["policy_change_6m"], -rules.contraction_policy_cut))
+        + int(lt(row["credit_impulse"], 0.0)),
+        # realer Leitzins über neutralem Zins, Kurve flach oder invers, Spreads sehr eng
+        "late": int(gt(row["real_gap"], rules.late_real_gap_min))
+        + int(lt(row["curve"], rules.late_curve_max))
+        + int(tight),
+        # Leitzins sinkt oder tief, Zinskurve steil, Spreads engen ein
+        "early": int(
+            lt(row["policy_change_12m"], -rules.early_policy_cut_12m)
+            or lt(row["real_gap"], rules.early_real_gap_max)
+        )
+        + int(gt(row["curve"], rules.early_curve_min))
+        + int(lt(row["spread_change_6m"], 0.0)),
+    }
+
+
+def raw_phase(row: pd.Series, rules: CreditCycleRules) -> str | None:
+    """Phase eines Monats: mindestens zwei von drei typischen Signalen (Mehrheitsregel).
+
+    Prüfreihenfolge Kontraktion, späte, frühe Expansion; sonst mittlere Expansion.
+    """
+    if pd.isna(row["policy_rate"]) or pd.isna(row["real_gap"]):
+        return None
+    signals = phase_signals(row, rules)
+    for phase in ("contraction", "late", "early"):
+        if signals[phase] >= 2:
+            return phase
     return "mid"
 
 

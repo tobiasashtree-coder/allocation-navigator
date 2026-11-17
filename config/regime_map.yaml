@@ -17,14 +17,13 @@ rules:
   confirm_months: 2        # Wechsel zählt nach zwei Monaten Führung in Folge ...
   switch_probability: 0.60 # ... oder sofort ab 60 % Wahrscheinlichkeit
 
-# Kurzfristiger Schuldenzyklus (Abschnitt 4.3). Prozentpunkte; Prüfreihenfolge:
-# Kontraktion vor später Expansion vor früher Expansion, sonst mittlere Expansion.
-#   Kontraktion: Kreditspread 6 Monate +0,50 Pp. weiter UND (Leitzins 6 Monate −0,25 Pp.
-#                ODER Kreditimpuls negativ)
-#   Spät:        realer Leitzins über neutralem Zins UND Zinskurve unter 0,50 Pp. UND
-#                Spread unter seinem 10-Jahres-Median
-#   Früh:        (Leitzins 12 Monate −0,50 Pp. ODER realer Abstand unter −1 Pp. bei
-#                Zinskurve über 1,50 Pp.) UND Spread 6 Monate nicht weiter
+# Kurzfristiger Schuldenzyklus (Abschnitt 4.3). Prozentpunkte. Eine Phase gilt, wenn
+# mindestens zwei ihrer drei typischen Signale vorliegen (Mehrheitsregel); Prüfreihenfolge
+# Kontraktion, späte, frühe, sonst mittlere Expansion.
+#   Kontraktion: Spread 6 Monate +0,50 Pp. | Leitzins 6 Monate −0,25 Pp. | Kreditimpuls < 0
+#   Spät:        realer Abstand zu r* > 0 | Zinskurve < 0,50 Pp. | Spread unter 10-J.-Median
+#   Früh:        Leitzins 12 Monate −0,50 Pp. oder realer Abstand < −1 Pp. | Kurve > 1,50 Pp.
+#                | Spread 6 Monate enger
 # Entwurf vom 17.11.2026; vor M6 festzuschreiben.
 credit_cycle:
   contraction_spread_widening: 0.50

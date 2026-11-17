@@ -137,33 +137,41 @@ def test_missing_scores_give_no_regime() -> None:
     assert out["regime"].isna().tolist() == [True, False, True]
 
 
-def test_credit_cycle_phase_rules() -> None:
+def test_credit_cycle_majority_rule() -> None:
     rules = CreditCycleRules()
     base = {
         "policy_rate": 3.0,
         "policy_change_6m": 0.0,
         "policy_change_12m": 0.0,
-        "real_gap": 0.2,
+        "real_gap": -0.2,
         "curve": 1.0,
-        "spread": 2.0,
-        "spread_change_6m": 0.0,
+        "spread": 3.0,
+        "spread_change_6m": 0.1,
         "spread_median_10y": 2.5,
         "credit_impulse": 1.0,
     }
     assert raw_phase(pd.Series(base), rules) == "mid"
+    # Kontraktion: zwei von drei Signalen
     assert (
         raw_phase(pd.Series({**base, "spread_change_6m": 0.8, "policy_change_6m": -0.5}), rules)
         == "contraction"
     )
     assert (
-        raw_phase(pd.Series({**base, "spread_change_6m": 0.8, "credit_impulse": -2.0}), rules)
+        raw_phase(pd.Series({**base, "policy_change_6m": -0.5, "credit_impulse": -2.0}), rules)
         == "contraction"
     )
     assert raw_phase(pd.Series({**base, "spread_change_6m": 0.8}), rules) == "mid"
-    assert raw_phase(pd.Series({**base, "curve": 0.2}), rules) == "late"
-    assert raw_phase(pd.Series({**base, "curve": 0.2, "spread": 3.0}), rules) == "mid"
-    assert raw_phase(pd.Series({**base, "policy_change_12m": -1.0}), rules) == "early"
-    assert raw_phase(pd.Series({**base, "real_gap": -2.0, "curve": 2.0}), rules) == "early"
+    # Spät: realer Abstand positiv und Kurve flach
+    assert raw_phase(pd.Series({**base, "real_gap": 0.5, "curve": 0.2}), rules) == "late"
+    assert raw_phase(pd.Series({**base, "real_gap": 0.5}), rules) == "mid"
+    # Früh: Leitzins gesenkt und Kurve steil
+    assert raw_phase(pd.Series({**base, "policy_change_12m": -1.0, "curve": 2.0}), rules) == "early"
+    assert raw_phase(pd.Series({**base, "curve": 2.0, "spread_change_6m": -0.2}), rules) == "early"
+    # fehlende Eingaben zählen nicht als Signal
+    assert (
+        raw_phase(pd.Series({**base, "curve": np.nan, "real_gap": 0.5, "spread": np.nan}), rules)
+        == "mid"
+    )
     assert raw_phase(pd.Series({**base, "policy_rate": np.nan}), rules) is None
 
 

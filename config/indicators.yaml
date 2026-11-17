@@ -229,6 +229,30 @@ indicators:
     vintages: true
     publication_lag: {days: 10}
     change: pct
+  us_gs10:
+    name: Rendite 10J.-Treasury, Monatsdurchschnitt (lange Zinskurve)
+    region: US
+    axis: market
+    symbols: {fred: GS10}
+    change: level
+  us_tb3ms:
+    name: Rendite 3M-T-Bill, Monatsdurchschnitt (lange Zinskurve)
+    region: US
+    axis: market
+    symbols: {fred: TB3MS}
+    change: level
+  us_curve_long:
+    name: Zinskurve USA aus Monatsdurchschnitten (ab 1953, für den Schuldenzyklus)
+    region: US
+    axis: credit_cycle
+    derived_from: [us_gs10, us_tb3ms]
+    change: level
+  us_credit_spread_long:
+    name: Kreditspread USA aus Monatsdurchschnitten (Baa minus 10J., ab 1953)
+    region: US
+    axis: credit_cycle
+    symbols: {fred: BAA10YM}
+    change: level
   us_policy_rate:
     name: Leitzins USA (effektive Fed Funds Rate)
     region: US
