@@ -34,6 +34,19 @@ from navigator.data.synthetic import (
 log = logging.getLogger(__name__)
 
 
+def apply_cost_schedule(returns: pd.Series, segment: Segment) -> pd.Series:
+    """Zieht je Monat ein Zwölftel des jeweils gültigen Jahresabschlags ab.
+
+    Der Abschlag hängt nur vom Kalendermonat ab, nie von Renditen; er ist damit
+    stichtagsneutral.
+    """
+    deduction = pd.Series(0.0, index=returns.index)
+    for step in sorted(segment.cost_schedule, key=lambda c: c.start):
+        begin = pd.Timestamp(f"{step.start}-01")
+        deduction[returns.index >= begin] = step.annual / 12.0
+    return returns - deduction
+
+
 class SeriesLoader:
     """Liest Reihen aus dem Cache und wählt je Reihe die Quelle mit der höchsten Priorität."""
 
@@ -154,7 +167,15 @@ class UniverseBuilder:
     def segment_returns(
         self, segment: Segment, base: str, cash: pd.DataFrame, asof: pd.Timestamp | None
     ) -> pd.Series | None:
-        """Monatsrenditen eines Segments in seiner Notierungswährung."""
+        """Monatsrenditen eines Segments in seiner Notierungswährung, nach Kostenabschlag."""
+        returns = self._raw_segment_returns(segment, base, cash, asof)
+        if returns is None or not segment.cost_schedule:
+            return returns
+        return apply_cost_schedule(returns, segment)
+
+    def _raw_segment_returns(
+        self, segment: Segment, base: str, cash: pd.DataFrame, asof: pd.Timestamp | None
+    ) -> pd.Series | None:
         kind = segment.kind
         if kind in ("price", "level"):
             returns = self._price_returns(segment.symbols, asof)

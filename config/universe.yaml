@@ -132,13 +132,16 @@ assets:
     hedged: true
     fx_exposure: {EUR: 1.0}
     segments:
-      - id: ishares_eur_govt_1_3
+      - id: xtrackers_eur_govt_1_3_acc
         kind: price
         quality: proxy
         currency: EUR
-        distributing: true
-        expected_start: "2006-06"
-        symbols: {yfinance: IBCA.DE, issuer_nav: ishares_eur_govt_1_3, eodhd: IBCA.XETRA}
+        expected_start: "2007-05"
+        symbols: {yfinance: DBXP.DE, issuer_nav: xtrackers_eur_govt_1_3, eodhd: DBXP.XETRA}
+        note: >-
+          Xtrackers II Eurozone Government Bond 1-3 UCITS ETF 1C (LU0290356871), thesaurierend.
+          Ersetzt den ausschüttenden iShares-ETF IBCA.DE, dessen Yahoo-Daten Ausschüttungen
+          nicht vollständig enthielten (Live-Lauf 17.11.2026).
       - id: synth_bund_2y
         kind: synthetic_bond
         quality: synthetisch
@@ -157,16 +160,15 @@ assets:
     hedged: true
     fx_exposure: {EUR: 1.0}
     segments:
-      - id: ishares_core_eur_govt
+      - id: ishares_eur_govt_7_10_acc
         kind: price
         quality: proxy
         currency: EUR
-        distributing: true
-        expected_start: "2009-04"
-        symbols: {yfinance: EUNH.DE, issuer_nav: ishares_core_eur_govt, eodhd: EUNH.XETRA}
+        expected_start: "2009-11"
+        symbols: {yfinance: SXRQ.DE, issuer_nav: ishares_eur_govt_7_10, eodhd: SXRQ.XETRA}
         note: >-
-          Laut Spezifikation. Der ETF deckt alle Laufzeiten ab (Duration rund 7 Jahre),
-          nicht nur 7–10+ Jahre; siehe docs/decisions.md.
+          iShares € Govt Bond 7-10yr UCITS ETF (Acc), thesaurierend. Laufzeitband passt
+          zum Backfill aus der 10J.-Bund-Rendite (siehe docs/decisions.md, E-18).
       - id: synth_bund_10y
         kind: synthetic_bond
         quality: synthetisch
@@ -385,13 +387,25 @@ assets:
     role: Inflation steigend, defensiv
     fx_exposure: {USD: 0.50, EUR: 0.20, OTHER: 0.30}
     segments:
-      - id: ishares_global_infra_ucits
+      - id: ishares_global_infra_acc
         kind: price
         quality: proxy
         currency: EUR
-        distributing: true
-        expected_start: "2006-10"
-        symbols: {yfinance: IQQI.DE, issuer_nav: ishares_global_infra, eodhd: IQQI.XETRA}
+        expected_start: "2023-02"
+        symbols: {yfinance: CBUX.DE, issuer_nav: ishares_global_infra_acc, eodhd: CBUX.XETRA}
+        note: >-
+          iShares Global Infrastructure UCITS ETF USD (Acc), thesaurierend, FTSE Global Core
+          Infrastructure wie in der Spezifikation.
+      - id: xtrackers_sp_global_infra_acc
+        kind: price
+        quality: proxy
+        backfill: true
+        currency: EUR
+        expected_start: "2008-01"
+        symbols: {yfinance: DX2E.DE, eodhd: DX2E.XETRA}
+        note: >-
+          Xtrackers S&P Global Infrastructure Swap UCITS ETF 1C (LU0322253229), thesaurierend,
+          als Brücke bis 2023 (anderer Index: S&P Global Infrastructure).
       - id: igf
         kind: price
         quality: proxy
@@ -432,6 +446,14 @@ assets:
         currency: USD
         expected_start: "1985-01"
         symbols: {static: "aqr_tsmom:TSMOM"}
+        cost_schedule:
+          - {start: "1985-01", annual: 0.0385}   # 3,0 % Handel + 0,85 % Fondskosten
+          - {start: "1993-01", annual: 0.0285}   # 2,0 % Handel + 0,85 % Fondskosten
+          - {start: "2003-01", annual: 0.0185}   # 1,0 % Handel + 0,85 % Fondskosten
+        note: >-
+          AQR-Faktor ist vor Handelskosten und Gebühren. Abschlag laut docs/decisions.md (E-30):
+          Handelskosten nach Hurst/Ooi/Pedersen (1 bis 4 % p. a., früher höher) plus die
+          Kostenquote von DBMF (0,85 %), weil DBMF die Bruttorendite der CTAs nachbildet.
 
   bitcoin:
     name: Bitcoin

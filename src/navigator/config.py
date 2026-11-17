@@ -91,6 +91,13 @@ class BlendComponent(StrictModel):
     weight: float
 
 
+class CostStep(StrictModel):
+    """Laufender Kostenabschlag ab einem Monat (Prozent p. a. als Dezimalzahl)."""
+
+    start: str
+    annual: float = Field(ge=0.0, le=0.2)
+
+
 class Segment(StrictModel):
     """Ein Abschnitt der Historie einer Assetklasse (Proxy oder Backfill)."""
 
@@ -107,6 +114,7 @@ class Segment(StrictModel):
     maturity_years: float | None = None
     cpi_symbols: dict[str, str] = Field(default_factory=dict)
     components: list[BlendComponent] = Field(default_factory=list)
+    cost_schedule: list[CostStep] = Field(default_factory=list)
     verified: bool = False
     note: str = ""
 

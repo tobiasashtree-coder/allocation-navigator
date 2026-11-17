@@ -195,3 +195,34 @@ def test_no_lookahead_in_universe(
     full_a = _builder(config, demo_project).build(base).returns
     full_b = _builder(config, perturbed).build(base).returns
     assert not full_a.equals(full_b)
+
+
+def test_cost_schedule_is_deducted_per_period() -> None:
+    from navigator.config import CostStep, Segment
+    from navigator.data.universe import apply_cost_schedule
+
+    index = pd.date_range("1990-01-31", "2004-12-31", freq="ME")
+    gross = pd.Series(0.01, index=index)
+    segment = Segment(
+        id="x",
+        kind="returns",
+        quality="synthetisch",
+        symbols={"static": "a:b"},
+        cost_schedule=[
+            CostStep(start="1993-01", annual=0.0285),
+            CostStep(start="1985-01", annual=0.0385),
+        ],
+    )
+    net = apply_cost_schedule(gross, segment)
+    assert net["1992-12-31"] == pytest.approx(0.01 - 0.0385 / 12)
+    assert net["1993-01-31"] == pytest.approx(0.01 - 0.0285 / 12)
+    assert net["2004-12-31"] == pytest.approx(0.01 - 0.0285 / 12)
+
+
+def test_trend_backfill_carries_documented_costs(config: AppConfig) -> None:
+    segment = next(s for s in config.universe.assets["trend"].segments if s.id == "aqr_tsmom")
+    assert [c.annual for c in sorted(segment.cost_schedule, key=lambda c: c.start)] == [
+        0.0385,
+        0.0285,
+        0.0185,
+    ]

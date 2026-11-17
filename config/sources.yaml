@@ -108,14 +108,14 @@ sources:
     options:
       automated_access: unknown      # allowed | forbidden | unknown (unknown = nur manuelle Datei)
       funds:
-        ishares_eur_govt_1_3:
-          isin: IE00B14X4Q57
+        xtrackers_eur_govt_1_3:
+          isin: LU0290356871
           url: ""
-        ishares_core_eur_govt:
-          isin: IE00B4WXJJ64
+        ishares_eur_govt_7_10:
+          isin: IE00B3FH7618
           url: ""
-        ishares_global_infra:
-          isin: IE00B1FZS467
+        ishares_global_infra_acc:
+          isin: IE000CK5G8J7
           url: ""
   private_infra:
     priority: 50
@@ -130,12 +130,12 @@ sources:
         msci_private_infra:
           series: msci_private_infra_12m
           url: https://www.msci.com/data-and-analytics/private-asset-solutions/global-private-infrastructure-asset-index-q1-2026-results
-          automated_access: unknown
+          automated_access: forbidden    # MSCI-Nutzungsbedingungen verbieten Bots und Scraper (Stand 15.07.2026)
           frequency: Q
         infra300:
           series: infra300_monthly
           url: https://www.infrastructureinvestor.com/infra300-posts-best-monthly-return-in-2026/
-          automated_access: unknown
+          automated_access: unknown      # PEI-Bedingungen und robots.txt noch nicht geprüft
           frequency: M
       nav_companies:
         hicl: {name: HICL Infrastructure, ticker: HICL.L}
