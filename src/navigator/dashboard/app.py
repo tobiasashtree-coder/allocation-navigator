@@ -184,7 +184,12 @@ def tab_overview(ctx: Context, rec: View | None, settings: dict[str, Any]) -> No
         st.dataframe(last, use_container_width=True)
     if f"detail:{key}" in rec.tables:
         st.markdown(f"**Ampel ({key})**")
-        st.dataframe(rec.tables[f"detail:{key}"][["Klasse", "Ampel"]], use_container_width=True)
+        columns = [c for c in ("Klasse", "Ampel", "Begründung") if c in rec.tables[f"detail:{key}"]]
+        st.dataframe(
+            rec.tables[f"detail:{key}"][columns],
+            use_container_width=True,
+            column_config={"Begründung": st.column_config.TextColumn(width="large")},
+        )
 
 
 def tab_regime(ctx: Context) -> None:

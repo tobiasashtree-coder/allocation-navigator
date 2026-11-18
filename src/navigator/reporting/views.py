@@ -74,6 +74,7 @@ def recommendation_view(rec: Recommendation, config: AppConfig, scenario: str = 
             {
                 "Klasse": [names.get(a, a) for a in assets],
                 "Ampel": v.lights.reindex(assets).to_numpy(),
+                "Begründung": v.reasons.reindex(assets).fillna("").to_numpy(),
                 "Signal": v.signal.reindex(assets).to_numpy(),
                 "Tilt_pp": v.tilt_pp.reindex(assets).to_numpy(),
                 "Basis": rec.base.weights.reindex(assets).to_numpy(),
@@ -173,6 +174,7 @@ def allocation_table(view: View, variant: str, amount: float | None = None) -> p
             "Basis %": detail["Basis"] * 100,
             "Abweichung Pp.": (detail["Ziel"] - detail["Basis"]) * 100,
             "Ampel": detail["Ampel"],
+            "Begründung": detail.get("Begründung", ""),
         },
         index=detail.index,
     ).sort_values("Gewicht %", ascending=False)

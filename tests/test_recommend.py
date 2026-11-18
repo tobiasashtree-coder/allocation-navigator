@@ -151,3 +151,19 @@ def test_no_lookahead_in_recommendation(  # type: ignore[no-untyped-def]
         )
         pd.testing.assert_series_equal(variant.signal, perturbed.variants[key].signal)
     pd.testing.assert_frame_equal(original.base.cov, perturbed.base.cov)
+
+
+def test_every_light_has_a_reason(recommendation) -> None:  # type: ignore[no-untyped-def]
+    rec = recommendation[0]
+    for variant in rec.variants.values():
+        assert set(variant.reasons.index) == set(variant.lights.index)
+        for asset, light in variant.lights.items():
+            text = variant.reasons[asset]
+            assert text.startswith("Signal ")
+            expected = {
+                "grün": "über dem Mittel",
+                "rot": "unter dem Mittel",
+                "gelb": "nahe am Mittel",
+            }
+            assert expected[light] in text
+    assert any("Overlay" in t for t in rec.variants["ab+overlay"].reasons)

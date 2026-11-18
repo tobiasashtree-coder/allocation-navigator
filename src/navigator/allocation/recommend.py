@@ -62,6 +62,62 @@ class Variant:
     tilt_pp: pd.Series
     target: TargetResult
     parts: pd.DataFrame
+    reasons: pd.Series = field(default_factory=lambda: pd.Series(dtype=object))
+
+
+def _pp(value: float) -> str:
+    return f"{value * 100:+.1f}".replace(".", ",")
+
+
+def explain_lights(
+    lights: pd.Series,
+    signal: pd.Series,
+    regime_signal: pd.Series,
+    probs: pd.Series,
+    regime_returns: pd.DataFrame,
+    conviction: float,
+    threshold_sd: float,
+) -> pd.Series:
+    """Kurze Begründung je Klasse, warum die Ampel rot, gelb oder grün steht.
+
+    Die Ampel vergleicht das Signal (erwartete Überrendite aus den Sichten minus
+    Gleichgewichtsrendite) der Klassen untereinander: grün liegt mehr als ``threshold_sd``
+    Standardabweichungen über dem Mittel, rot entsprechend darunter. Genannt werden das
+    Signal, der stärkste Regime-Treiber und, falls vorhanden, der Beitrag des Overlays.
+    """
+    mean, sd = float(signal.mean()), float(signal.std(ddof=0) or 1.0)
+    p = probs.reindex(list(QUADRANTS)).fillna(0.0)
+    p = p / p.sum() if p.sum() > 0 else p
+    out = {}
+    for asset, light in lights.items():
+        z = (float(signal[asset]) - mean) / sd
+        returns = (
+            regime_returns.loc[asset, list(QUADRANTS)] if asset in regime_returns.index else None
+        )
+        z_text = f"z {z:+.1f}".replace(".", ",")
+        value = f"Signal {_pp(signal[asset])} Pp. p. a."
+        if light == "grün":
+            head = f"{value}, deutlich über dem Mittel der Klassen ({z_text})"
+        elif light == "rot":
+            head = f"{value}, deutlich unter dem Mittel der Klassen ({z_text})"
+        else:
+            limit = f"{threshold_sd:.1f}".replace(".", ",")
+            head = f"{value}, nahe am Mittel der Klassen ({z_text}, Grenze ±{limit})"
+        parts = [head]
+        if returns is not None and p.sum() > 0:
+            top = max(QUADRANTS, key=lambda q: float(p[q]))
+            parts.append(
+                f"wahrscheinlichstes Regime {QUADRANT_LABELS[top]} ({p[top]:.0%}) mit "
+                f"{_pp(float(returns[top]))} % p. a. für diese Klasse"
+            )
+        overlay = float(signal[asset]) - float(regime_signal.get(asset, signal[asset]))
+        if abs(overlay) >= 0.0005:
+            parts.append(f"Overlay {_pp(overlay)} Pp.")
+        if conviction < 0.3:
+            shown = f"{conviction:.2f}".replace(".", ",")
+            parts.append(f"geringe Überzeugung ({shown}) dämpft die Sicht")
+        out[asset] = "; ".join(parts)
+    return pd.Series(out, dtype=object)
 
 
 @dataclass
@@ -110,8 +166,28 @@ def build_variant(
     usd_cap = overlay.usd_cap if overlay is not None else None
     target = target_weights(bl, base, config, current, usd_cap, simulations)
     parts = decomposition(base, bl_regime, bl, target.weights, config)
+    reasons = explain_lights(
+        lights,
+        signal,
+        bl_regime.posterior - bl_regime.prior,
+        probs,
+        returns_table,
+        conviction,
+        float(outputs["ampel"].get("threshold_sd", 0.5)),
+    )
     return Variant(
-        name, probs, conviction, view, bl, bl_regime, signal, lights, tilt_pp, target, parts
+        name,
+        probs,
+        conviction,
+        view,
+        bl,
+        bl_regime,
+        signal,
+        lights,
+        tilt_pp,
+        target,
+        parts,
+        reasons,
     )
 
 
@@ -296,6 +372,7 @@ def write_report(config: AppConfig, paths: ProjectPaths, rec: Recommendation) ->
                 main.lights[a] + " " + ARROWS.get((str(prev.get(a, "")), main.lights[a]), "")
                 for a in main.lights.index
             ],
+            "Begründung": main.reasons.reindex(main.lights.index).fillna("").to_numpy(),
             "Signal % p. a.": main.signal.to_numpy() * 100,
             "Tilt Pp.": main.tilt_pp.reindex(main.lights.index).to_numpy(),
             "Basis %": rec.base.weights.reindex(main.lights.index).to_numpy() * 100,
