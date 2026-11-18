@@ -118,6 +118,12 @@ Eintrag auf dem Lauf mit echten Daten vom 17.11.2026 beruht, steht „Live-Lauf"
 | E-86 | Kommandozeile und Dashboard teilen eine Ansicht (`reporting/views.py`): `navigator recommend` und `navigator backtest` schreiben neben Bericht und CSV einen Schnappschuss (`reports/snapshot/*.json`); das Dashboard zeigt diesen an und rechnet selbst nichts. Ein automatischer Test (Streamlit `AppTest`) vergleicht die angezeigten Zielgewichte mit der CSV der Kommandozeile. | Dashboard rechnet bei jedem Aufruf neu. | Abnahme M7 („Zahlen identisch mit der Kommandozeile"); eine Empfehlung dauert Minuten. |
 | E-87 | Seitenleiste: Methode, mit/ohne Overlay, Overlay-Stärke, Basis (Risikoparität oder Gleichgewichtung), Tracking Error, Umschlag, Basiswährung. Weichen Einstellungen von der Konfiguration ab, rechnet „Szenario berechnen“ über dasselbe Paket (100 Resampling-Läufe) und kennzeichnet das Ergebnis als Szenario; die Konfiguration bleibt unverändert. | Änderungen in die YAML-Dateien schreiben. | Spezifikation 9.4; Regel 3. |
 
+## Monatsbetrieb (M8, 19.11.2026)
+
+| Nr. | Entscheidung | Alternativen | Grund |
+| --- | --- | --- | --- |
+| E-88 | `navigator monthly` ruft die Paketfunktionen der Einzelschritte direkt auf. Scheitert ein Schritt, laufen unabhängige Schritte weiter, abhängige werden als „übersprungen“ gemeldet; ohne Datenabruf entfallen alle Auswertungen. Rückgabewert 1 bei einem Fehler. Empfehlung und Monatsbericht werden je Stichtag archiviert; der Bericht zeigt die Änderung zum Vormonat. Backtest nur mit `--backtest`. Der GitHub-Workflow nutzt denselben Monatslauf. | Abbruch beim ersten Fehler; Backtest jeden Monat. | Abnahme M8 („ein vollständiger Lauf ohne manuelle Eingriffe“); Regel 10; der Backtest dauert rund 30 Minuten und ändert sich monatlich kaum. |
+
 ## Festzuschreibende Parameter mit Status „Entwurf"
 
 **Seit E-84 (18.11.2026) festgeschrieben.** Diese Werte stehen in `config/`, sind aber in der Spezifikation nicht oder nicht eindeutig

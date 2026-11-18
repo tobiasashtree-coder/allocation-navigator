@@ -39,20 +39,8 @@ jobs:
       - name: Quellen pruefen (Ticker, Reihen-IDs, Startdaten)
         run: uv run navigator data sources --probe | tee sources.log
         continue-on-error: true
-      - name: Daten abrufen
-        run: uv run navigator data update | tee update.log
-        continue-on-error: true
-      - name: Validieren
-        run: uv run navigator data validate | tee validate.log
-        continue-on-error: true
-      - name: Regime nach Methode A und B
-        run: uv run navigator regime run --method both | tee regime.log
-        continue-on-error: true
-      - name: Langfristiger Schuldenzyklus
-        run: uv run navigator debt run | tee debt.log
-        continue-on-error: true
-      - name: Empfehlung
-        run: uv run navigator recommend | tee recommend.log
+      - name: Monatslauf (Datenabruf, Validierung, Regime, Schuldenzyklus, Empfehlung, Bericht)
+        run: uv run navigator monthly | tee monthly.log
         continue-on-error: true
       - name: Backtest
         if: ${{ inputs.backtest != 'nein' }}
@@ -62,7 +50,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for f in reports/backtest_latest.md reports/recommend_latest.md reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
+          for f in reports/monthly_latest.md reports/backtest_latest.md reports/recommend_latest.md reports/debt_latest.md reports/regime_b_latest.md reports/regime_a_latest.md reports/validation_latest.md reports/sources_latest.md; do
             if [ -f "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
           done
       - uses: actions/upload-artifact@v4

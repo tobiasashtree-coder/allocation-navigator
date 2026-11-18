@@ -48,11 +48,6 @@ RootOption = Annotated[
     typer.Option("--root", help="Projektwurzel (Standard: automatisch bzw. NAVIGATOR_HOME)."),
 ]
 
-LATER = {
-    "report": "M6/M8",
-    "monthly": "M8",
-}
-
 
 def _setup(root: Path | None, demo: bool) -> tuple[AppConfig, ProjectPaths]:
     paths = project_paths(root, demo=demo)
@@ -270,14 +265,6 @@ def infra_add(
     typer.echo("Bereits vorhanden." if entry is None else f"Erfasst als {entry.id}.")
 
 
-def _not_yet(name: str) -> None:
-    typer.echo(
-        f"'navigator {name}' ist noch nicht implementiert (Meilenstein {LATER[name]}). "
-        "Stand: M0 und M1 (Datenschicht). Siehe docs/checkpoints/M1.md."
-    )
-    raise typer.Exit(code=2)
-
-
 @regime_app.command("run")
 def regime_run(
     method: Annotated[str, typer.Option("--method", help="a, b oder both")] = "a",
@@ -404,9 +391,13 @@ def backtest(
 
 
 @app.command()
-def report() -> None:
-    """Monatsbericht als HTML (folgt in M6/M8)."""
-    _not_yet("report")
+def report(demo: DemoOption = False, root: RootOption = None) -> None:
+    """Monatsbericht aus den vorhandenen Ergebnissen neu schreiben (ohne Neuberechnung)."""
+    from navigator.monthly import write_monthly_report
+
+    config, paths = _setup(root, demo)
+    path = write_monthly_report(config, paths, None)
+    typer.echo(f"Monatsbericht: {path} und {path.with_suffix('.html')}")
 
 
 @app.command()
@@ -428,13 +419,36 @@ def dashboard(
 
 
 @app.command()
-def monthly() -> None:
-    """Monatslauf: Update, Regime, Empfehlung, Bericht (folgt in M8)."""
-    _not_yet("monthly")
+def monthly(
+    asof: Annotated[
+        str | None,
+        typer.Option("--asof", help="Stichtag JJJJ-MM-TT (Standard: letztes Monatsende)"),
+    ] = None,
+    backtest: Annotated[
+        bool, typer.Option("--backtest/--no-backtest", help="Backtest mitrechnen (ca. 30 Min.)")
+    ] = False,
+    simulations: Annotated[
+        int | None, typer.Option("--simulations", help="Resampling-Simulationen (Standard 500)")
+    ] = None,
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Monatslauf ohne Eingriffe: Datenabruf, Validierung, Regime, Schuldenzyklus, Empfehlung,
+    Monatsbericht (reports/monthly_latest.md und .html)."""
+    import pandas as pd
 
+    from navigator.monthly import run_monthly
 
-if __name__ == "__main__":
-    app()
+    config, paths = _setup(root, demo)
+    stamp = pd.Timestamp(asof) if asof else None
+    run = run_monthly(config, paths, stamp, simulations, backtest)
+    for step in run.steps:
+        typer.echo(f"{step.name:<16} {step.status:<12} {step.seconds:6.0f} s  {step.message}")
+    typer.echo(f"Monatsbericht: {paths.reports / 'monthly_latest.md'}")
+    if paths.demo:
+        typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
+    if not run.ok:
+        raise typer.Exit(code=1)
 
 
 @debt_app.command("run")
@@ -474,3 +488,7 @@ def debt_run(
     typer.echo(f"Bericht: {md_path}; Historie: {csv_path}")
     if paths.demo:
         typer.echo("DEMO-DATEN: synthetische Reihen, keine Aussage über Märkte.")
+
+
+if __name__ == "__main__":
+    app()

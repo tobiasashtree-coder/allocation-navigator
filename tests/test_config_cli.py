@@ -82,12 +82,6 @@ def test_cli_config_check() -> None:
     assert "18 eingeschaltet" in result.output
 
 
-def test_cli_later_milestones_exit_with_notice() -> None:
-    result = runner.invoke(app, ["monthly"])
-    assert result.exit_code == 2
-    assert "noch nicht implementiert" in result.output
-
-
 def test_cli_demo_update_and_validate(tmp_path: Path) -> None:
     shutil.copytree(REPO_ROOT / "config", tmp_path / "config")
     update = runner.invoke(app, ["data", "update", "--demo", "--root", str(tmp_path)])

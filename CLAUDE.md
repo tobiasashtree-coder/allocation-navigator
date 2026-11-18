@@ -13,7 +13,8 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
 - Fertig: **M6** (Backtest, `navigator backtest`); Prüfpunkt freigegeben am 18.11.2026
   (Overlay und Sensitivität vorerst wie spezifiziert, Vermerk in E-85).
 - Fertig: **M7** (Dashboard, `navigator dashboard`, `docs/checkpoints/M7.md`).
-- Nächster Schritt: **M8** (Monatslauf), erst nach Freigabe durch Tobias.
+- Fertig: **M8** (Monatsbetrieb, `navigator monthly`, `docs/checkpoints/M8.md`). Alle
+  Meilensteine abgeschlossen; weitere Änderungen nur auf Wunsch von Tobias.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.
@@ -94,3 +95,4 @@ uv run navigator data update --demo && uv run navigator data validate --demo   #
 | `backtest/run.py` | Backtest gesamt, Zeiträume, Sensitivität, Bericht (`navigator backtest`) |
 | `reporting/views.py` | Gemeinsame Tabellen für CLI und Dashboard, Schnappschüsse (`reports/snapshot/`) |
 | `dashboard/` | Streamlit-Dashboard (`navigator dashboard`), liest nur Schnappschüsse oder rechnet Szenarien |
+| `monthly.py` | Monatslauf aller Schritte, Monatsbericht und Archiv (`navigator monthly`, `navigator report`) |
