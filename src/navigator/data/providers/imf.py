@@ -28,6 +28,11 @@ from navigator.data.providers.base import (
 from navigator.http import HttpError
 from navigator.runlog import utc_now
 
+JSON_HEADERS = {"Accept": "application/json", "Accept-Language": "de,en;q=0.8"}
+"""Übliche Kopfzeilen einer JSON-Abfrage. Ohne sie lehnt der Schutzfilter vor der
+IMF-Schnittstelle Anfragen aus manchen Netzen mit HTTP 403 ab (18.11.2026); die Kennung des
+Programms (User-Agent) bleibt unverändert."""
+
 
 class ImfProvider(Provider):
     """IMF DataMapper API v1."""
@@ -52,7 +57,9 @@ class ImfProvider(Provider):
         )
         try:
             payload = self.http.get(
-                f"{base}/{indicator}/{country}", min_interval=self.min_interval
+                f"{base}/{indicator}/{country}",
+                headers=JSON_HEADERS,
+                min_interval=self.min_interval,
             ).json()
         except HttpError as exc:
             raise SeriesNotFoundError(f"imf: {request.symbol} nicht abrufbar ({exc})") from exc
