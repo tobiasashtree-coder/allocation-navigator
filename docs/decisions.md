@@ -111,6 +111,13 @@ Eintrag auf dem Lauf mit echten Daten vom 17.11.2026 beruht, steht „Live-Lauf"
 | E-84 | **Parameter festgeschrieben** vor dem ersten Backtest mit echten Daten (Konfigurations-Hash im Bericht): alle Entwürfe aus `base.yaml`, `regime_map.yaml`, `debt_cycle.yaml` und `backtest.yaml` gelten unverändert als festgelegt. | Weitere Anpassung vorab. | Regel 3 und 8.4; jede spätere Änderung wird als neue Variante gezählt (Deflated Sharpe). |
 | E-85 | Prüfpunkt M6 (18.11.2026, Tobias): Overlay und Sensitivität bleiben **vorerst** wie spezifiziert. Offen vermerkt: Overlay schadet im Prüfzeitraum; Sensitivität auf Form (iii) fehlt. | Overlay abschwächen oder nur anzeigen; Sensitivität auf Form (iii). | Entscheidung des Nutzers; erneute Bewertung später, jede Änderung als neue Variante gezählt. |
 
+## Dashboard (M7, 18.11.2026)
+
+| Nr. | Entscheidung | Alternativen | Grund |
+| --- | --- | --- | --- |
+| E-86 | Kommandozeile und Dashboard teilen eine Ansicht (`reporting/views.py`): `navigator recommend` und `navigator backtest` schreiben neben Bericht und CSV einen Schnappschuss (`reports/snapshot/*.json`); das Dashboard zeigt diesen an und rechnet selbst nichts. Ein automatischer Test (Streamlit `AppTest`) vergleicht die angezeigten Zielgewichte mit der CSV der Kommandozeile. | Dashboard rechnet bei jedem Aufruf neu. | Abnahme M7 („Zahlen identisch mit der Kommandozeile"); eine Empfehlung dauert Minuten. |
+| E-87 | Seitenleiste: Methode, mit/ohne Overlay, Overlay-Stärke, Basis (Risikoparität oder Gleichgewichtung), Tracking Error, Umschlag, Basiswährung. Weichen Einstellungen von der Konfiguration ab, rechnet „Szenario berechnen“ über dasselbe Paket (100 Resampling-Läufe) und kennzeichnet das Ergebnis als Szenario; die Konfiguration bleibt unverändert. | Änderungen in die YAML-Dateien schreiben. | Spezifikation 9.4; Regel 3. |
+
 ## Festzuschreibende Parameter mit Status „Entwurf"
 
 **Seit E-84 (18.11.2026) festgeschrieben.** Diese Werte stehen in `config/`, sind aber in der Spezifikation nicht oder nicht eindeutig

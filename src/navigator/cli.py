@@ -50,7 +50,6 @@ RootOption = Annotated[
 
 LATER = {
     "report": "M6/M8",
-    "dashboard": "M7",
     "monthly": "M8",
 }
 
@@ -354,6 +353,9 @@ def recommend(
     stamp = pd.Timestamp(asof) if asof else None
     rec = load_and_recommend(config, paths, stamp, overlay, current, simulations)
     md, csv = write_report(config, paths, rec)
+    from navigator.reporting.views import recommendation_view, snapshot_path
+
+    recommendation_view(rec, config).save(snapshot_path(paths.reports, "recommend"))
     key = "ab+overlay" if "ab+overlay" in rec.variants else next(iter(rec.variants))
     variant = rec.variants[key]
     for asset, weight in variant.target.weights.sort_values(ascending=False).items():
@@ -392,6 +394,9 @@ def backtest(
     inputs = load_inputs(config, paths, end)
     result = run_backtest(config, inputs, placebo, simulations)
     md, page = write_report(config, paths, result)
+    from navigator.reporting.views import backtest_view, snapshot_path
+
+    backtest_view(result, config).save(snapshot_path(paths.reports, "backtest"))
     typer.echo(f"Placebo-p-Wert {result.placebo_p:.3f} · Deflated Sharpe {result.deflated:.3f}")
     typer.echo(f"Bericht: {md}; HTML: {page}")
     if paths.demo:
@@ -405,9 +410,21 @@ def report() -> None:
 
 
 @app.command()
-def dashboard() -> None:
-    """Interaktives Dashboard (folgt in M7)."""
-    _not_yet("dashboard")
+def dashboard(
+    port: Annotated[int, typer.Option("--port", help="Port des Dashboards")] = 8501,
+    demo: DemoOption = False,
+    root: RootOption = None,
+) -> None:
+    """Interaktives Dashboard (Streamlit) mit sechs Reitern; liest die Schnappschüsse."""
+    import os
+    import subprocess
+    import sys
+
+    _, paths = _setup(root, demo)
+    app_path = Path(__file__).parent / "dashboard" / "app.py"
+    env = {**os.environ, "NAVIGATOR_ROOT": str(paths.root), "NAVIGATOR_DEMO": "1" if demo else "0"}
+    command = [sys.executable, "-m", "streamlit", "run", str(app_path), "--server.port", str(port)]
+    raise typer.Exit(subprocess.call(command, env=env))
 
 
 @app.command()

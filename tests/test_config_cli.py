@@ -83,7 +83,7 @@ def test_cli_config_check() -> None:
 
 
 def test_cli_later_milestones_exit_with_notice() -> None:
-    result = runner.invoke(app, ["dashboard"])
+    result = runner.invoke(app, ["monthly"])
     assert result.exit_code == 2
     assert "noch nicht implementiert" in result.output
 

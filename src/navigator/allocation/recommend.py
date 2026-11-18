@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from navigator.allocation.base import BaseAllocation, base_allocation, risk_contributions
+from navigator.allocation.base import BaseAllocation, risk_contributions
 from navigator.allocation.engine import (
     BlackLitterman,
     TargetResult,
@@ -161,6 +161,7 @@ def run_recommendation(
     overlay: OverlayResult | None,
     current: pd.Series | None = None,
     simulations: int | None = None,
+    base_method: str = "risk_parity",
 ) -> Recommendation:
     """Empfehlung zum Stichtag ``asof``; alle Eingaben nur bis ``asof`` (Point-in-Time).
 
@@ -170,7 +171,9 @@ def run_recommendation(
     """
     returns = returns[returns.index <= asof]
     effect = effect[effect.index <= asof]
-    base = base_allocation(returns, config)
+    from navigator.allocation.base import BASE_METHODS
+
+    base = BASE_METHODS[base_method](returns, config)
     assets = list(base.cov.index)
     excess = excess_returns(returns)[assets]
     hist, counts = historical_regime_returns(excess, regimes[regimes.index <= asof])
@@ -366,6 +369,7 @@ def load_and_recommend(
     with_overlay: bool = True,
     current: pd.Series | None = None,
     simulations: int | None = None,
+    base_method: str = "risk_parity",
 ) -> Recommendation:
     """Lädt alles Nötige (Universum, Methoden A und B, Schuldenzyklus) und empfiehlt."""
     from navigator.allocation.overlay import apply_overlay
@@ -392,7 +396,9 @@ def load_and_recommend(
     probs_b = cmp.b.probs.rename(columns={q: f"p_{q}" for q in QUADRANTS})
     overlay = None
     if with_overlay:
-        base = base_allocation(universe.returns[universe.returns.index <= end], config)
+        from navigator.allocation.base import BASE_METHODS
+
+        base = BASE_METHODS[base_method](universe.returns[universe.returns.index <= end], config)
         debt = run_debt_stress(config, store, end)
         table = current_table(config, debt, end)
         measured = {
@@ -412,4 +418,5 @@ def load_and_recommend(
         overlay,
         current,
         simulations,
+        base_method,
     )

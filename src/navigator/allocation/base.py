@@ -144,3 +144,15 @@ def base_allocation(returns: pd.DataFrame, config: AppConfig) -> BaseAllocation:
         basket_weights=pd.Series(basket_w, index=basket_names),
         basket_members=members,
     )
+
+
+def equal_weight_base(returns: pd.DataFrame, config: AppConfig) -> BaseAllocation:
+    """Alternative Basis für Szenarien: Gleichgewichtung aller verfügbaren Klassen (ohne Cash),
+    Obergrenzen eingehalten; Kovarianz wie bei der Risikoparität."""
+    assets = [a for a in returns.columns if a not in EXCLUDED]
+    cov, delta = covariance(returns[assets], config)
+    weights = enforce_caps(pd.Series(1.0 / len(cov), index=cov.index), config)
+    return BaseAllocation(weights, cov, delta, pd.Series(dtype="float64"), {})
+
+
+BASE_METHODS = {"risk_parity": base_allocation, "equal_weight": equal_weight_base}

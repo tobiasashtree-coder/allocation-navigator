@@ -196,7 +196,12 @@ def _coverage_table(
         cell = f"{row['first']}–{row['last']} ({_fmt(row['median'])}; {_fmt(row['last_value'])})"
         rows.setdefault(str(row["input"]), {})[owner] = cell
     order = [c for c in countries] + [c for c in ("USA", "DEU") if c in panel]
-    frame = pd.DataFrame.from_dict(rows, orient="index").reindex(columns=order).fillna("")
+    frame = (
+        pd.DataFrame.from_dict(rows, orient="index")
+        .reindex(columns=order)
+        .astype(object)
+        .fillna("")
+    )
     return frame.sort_index().rename_axis("Rohreihe")
 
 
