@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from navigator.dashboard.data import Context, agreement, context_from_env, regime_history, scenario
-from navigator.reporting.views import View, detail_display
+from navigator.reporting.views import View, allocation_table, detail_display
 
 COLORS = {
     "disinflationary_boom": "#2ca02c",
@@ -119,6 +119,53 @@ def tab_overview(ctx: Context, rec: View | None, settings: dict[str, Any]) -> No
         st.info("Noch keine Empfehlung. Erst `navigator recommend` ausführen.")
         return
     v = rec.values
+    key = _variant_key(settings)
+    label = VARIANTS[str(settings["method"])] + (" mit Overlay" if settings["overlay"] else "")
+    st.markdown(f"### Empfohlene Gewichtung zum Stichtag {v['asof']}")
+    st.caption(
+        f"Variante: {label} (Auswahl in der Seitenleiste) · Basiswährung {v['base_currency']} · "
+        "Stichtag ist das letzte Monatsende mit vollständigen Daten. Das Tool setzt eine "
+        "Methode um; es ist keine Anlageberatung."
+    )
+    if v.get("scenario"):
+        st.warning(f"SZENARIO (nicht die Konfiguration): {v['scenario']}")
+    if f"detail:{key}" in rec.tables:
+        amount = st.number_input(
+            f"Anlagebetrag in {v['base_currency']} (optional)",
+            min_value=0.0,
+            value=0.0,
+            step=1000.0,
+        )
+        table = allocation_table(rec, key, amount or None)
+        left, right = st.columns([3, 2])
+        left.dataframe(
+            table,
+            use_container_width=True,
+            column_config={
+                "Gewicht %": st.column_config.NumberColumn(format="%.1f"),
+                "Basis %": st.column_config.NumberColumn(format="%.1f"),
+                "Abweichung Pp.": st.column_config.NumberColumn(format="%+.1f"),
+                "Betrag": st.column_config.NumberColumn(format="%.0f"),
+            },
+            key="allocation_table",
+        )
+        bars = go.Figure(
+            go.Bar(x=table["Gewicht %"], y=table["Klasse"], orientation="h", marker_color="#1f77b4")
+        )
+        bars.update_layout(
+            height=520,
+            margin={"t": 10, "l": 10},
+            yaxis={"autorange": "reversed"},
+            xaxis_title="Gewicht %",
+        )
+        right.plotly_chart(bars, use_container_width=True)
+        failed = [k for k, ok in v["checks"][key].items() if not ok]
+        st.caption(
+            f"Summe {table['Gewicht %'].sum():.1f} % · Tracking Error zur Basis "
+            f"{v['tracking_error'][key]:.2%} · Restriktionen "
+            + ("eingehalten" if not failed else "VERLETZT: " + ", ".join(failed))
+        )
+    st.markdown("### Lage")
     cols = st.columns(4)
     cols[0].metric("Stichtag", v["asof"])
     cols[1].metric("Überzeugung (A vs. B)", f"{v['conviction']:.2f}")
@@ -135,7 +182,6 @@ def tab_overview(ctx: Context, rec: View | None, settings: dict[str, Any]) -> No
         last = debt.sort_values("date").groupby("country").last()[["score", "phase"]]
         st.markdown("**Schuldenzyklus (gemessen)**")
         st.dataframe(last, use_container_width=True)
-    key = _variant_key(settings)
     if f"detail:{key}" in rec.tables:
         st.markdown(f"**Ampel ({key})**")
         st.dataframe(rec.tables[f"detail:{key}"][["Klasse", "Ampel"]], use_container_width=True)

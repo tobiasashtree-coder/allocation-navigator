@@ -158,3 +158,24 @@ def detail_display(view: View, variant: str) -> pd.DataFrame:
             "Band_high": "Band bis %",
         }
     )
+
+
+def allocation_table(view: View, variant: str, amount: float | None = None) -> pd.DataFrame:
+    """Empfohlene Gewichtung je Klasse zum Stichtag, absteigend; optional als Betrag.
+
+    Gleiche Zahlen wie ``recommend_targets.csv`` (Spalte ``variant``).
+    """
+    detail = view.tables[f"detail:{variant}"]
+    frame = pd.DataFrame(
+        {
+            "Klasse": detail["Klasse"],
+            "Gewicht %": detail["Ziel"] * 100,
+            "Basis %": detail["Basis"] * 100,
+            "Abweichung Pp.": (detail["Ziel"] - detail["Basis"]) * 100,
+            "Ampel": detail["Ampel"],
+        },
+        index=detail.index,
+    ).sort_values("Gewicht %", ascending=False)
+    if amount is not None and amount > 0:
+        frame.insert(2, "Betrag", frame["Gewicht %"] / 100 * amount)
+    return frame

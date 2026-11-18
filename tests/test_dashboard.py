@@ -62,6 +62,14 @@ def test_dashboard_shows_cli_numbers(
     np.testing.assert_allclose(
         shown.to_numpy(), cli.loc[shown.index, "ab+overlay"].to_numpy(), rtol=0, atol=1e-12
     )
+    overview = next(df.value for df in at.dataframe if "Gewicht %" in df.value.columns)
+    np.testing.assert_allclose(
+        (overview["Gewicht %"] / 100).to_numpy(),
+        cli.loc[overview.index, "ab+overlay"].to_numpy(),
+        rtol=0,
+        atol=1e-12,
+    )
+    assert abs(overview["Gewicht %"].sum() - 100) < 1e-9
     snapshot = View.load(snapshot_path(cli_outputs.reports, "recommend"))
     for key, ok in snapshot.values["checks"]["ab+overlay"].items():
         assert ok, key
@@ -81,3 +89,16 @@ def test_dashboard_other_variant_matches(
     cli = pd.read_csv(cli_outputs.reports / "recommend_targets.csv", index_col=0)
     np.testing.assert_allclose(shown.to_numpy(), cli.loc[shown.index, "a"].to_numpy(), atol=1e-12)
     assert not at.sidebar.warning, "keine Szenario-Warnung ohne Änderung der Einstellungen"
+
+
+def test_allocation_table_amounts() -> None:
+    from navigator.reporting.views import allocation_table
+
+    detail = pd.DataFrame(
+        {"Klasse": ["A", "B"], "Ampel": ["grün", "rot"], "Ziel": [0.25, 0.75], "Basis": [0.5, 0.5]},
+        index=pd.Index(["a", "b"], name="asset"),
+    )
+    table = allocation_table(View("recommend", {"detail:x": detail}, {}), "x", 10_000)
+    assert list(table.index) == ["b", "a"]
+    assert table.loc["b", "Betrag"] == pytest.approx(7_500)
+    assert table.loc["a", "Abweichung Pp."] == pytest.approx(-25)
