@@ -10,7 +10,8 @@ Asset-Allocation-Tool nach Ray Dalios Zyklenlogik. Die vollständige Spezifikati
   freigegeben am 17.11.2026 mit Variante 2, Marktmerkmale als Veränderung).
 - Fertig: **M4** (Schuldenzyklus-Overlay, `docs/checkpoints/M4.md`).
 - Fertig: **M5** (Empfehlungs-Engine, `docs/checkpoints/M5.md`, `navigator recommend`).
-- Nächster Schritt: **M6** (Backtest), danach Prüfpunkt nach M6.
+- Fertig: **M6** (Backtest, `navigator backtest`). **Prüfpunkt M6 offen**
+  (`docs/checkpoints/M6.md`): vor M7 auf Freigabe durch Tobias warten.
 - Echte Daten erreicht nur der GitHub-Workflow „Live-Daten (manuell)" oder ein lokaler Lauf;
   die Cloud-Entwicklungsumgebung erreicht die Datenquellen nicht. Berichte stehen im Log des
   Laufs (`gh run view <id> --log`), Artefakte sind von dort nicht ladbar.
@@ -86,3 +87,6 @@ uv run navigator data update --demo && uv run navigator data validate --demo   #
 | `allocation/base.py` | Risikoparitäts-Basis (Ledoit-Wolf, ERC je Korb und zwischen Körben) |
 | `allocation/engine.py` | Regime-Renditen (James-Stein), Black-Litterman, Ampel, Tilts, Zielgewichte, Zerlegung |
 | `allocation/recommend.py` | Empfehlung je Variante, Währungssicht, Bericht (`navigator recommend`) |
+| `backtest/engine.py` | Walk-Forward-Simulation, Strategien, Placebo-Folgen |
+| `backtest/metrics.py` | Kennzahlen, Deflated Sharpe Ratio |
+| `backtest/run.py` | Backtest gesamt, Zeiträume, Sensitivität, Bericht (`navigator backtest`) |
